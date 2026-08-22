@@ -265,17 +265,36 @@
             }
         });
 
-        function replaceFootnoteRefs(node) {
+                function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\[(\d+)\]/g;
-                if (regex.test(node.textContent)) {
-                    var span = document.createElement('span');
-                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
-                    node.parentNode.replaceChild(span, node);
+                if (node.textContent.indexOf('[') !== -1) {
+                    var newHtml = node.textContent.replace(/\[(\d+)\]/g, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    if (newHtml !== node.textContent) {
+                        var span = document.createElement('span');
+                        span.innerHTML = newHtml;
+                        
+                        // Добавляем обработчики клика прямо на созданные сноски
+                        var refs = span.querySelectorAll('.footnote-ref');
+                        for (var i = 0; i < refs.length; i++) {
+                            refs[i].addEventListener('click', function(e) {
+                                e.stopPropagation(); // Останавливаем всплытие к параграфу!
+                                var fnId = this.getAttribute('data-fn');
+                                if (footnotes[fnId]) {
+                                    if ($footnoteTitle) $footnoteTitle.textContent = 'Пояснение ' + fnId;
+                                    if ($footnoteText) $footnoteText.innerHTML = footnotes[fnId];
+                                    if ($footnoteModal) $footnoteModal.classList.add('open');
+                                }
+                            });
+                        }
+                        node.parentNode.replaceChild(span, node);
+                    }
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 if (node.classList && node.classList.contains('footnote-ref')) return;
-                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+                var children = Array.from(node.childNodes);
+                for (var j = 0; j < children.length; j++) {
+                    replaceFootnoteRefs(children[j]);
+                }
             }
         }
         if ($content) replaceFootnoteRefs($content);
@@ -358,17 +377,36 @@
             }
         });
 
-        function replaceFootnoteRefs(node) {
+                function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\[(\d+)\]/g;
-                if (regex.test(node.textContent)) {
-                    var span = document.createElement('span');
-                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
-                    node.parentNode.replaceChild(span, node);
+                if (node.textContent.indexOf('[') !== -1) {
+                    var newHtml = node.textContent.replace(/\[(\d+)\]/g, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    if (newHtml !== node.textContent) {
+                        var span = document.createElement('span');
+                        span.innerHTML = newHtml;
+                        
+                        // Добавляем обработчики клика прямо на созданные сноски
+                        var refs = span.querySelectorAll('.footnote-ref');
+                        for (var i = 0; i < refs.length; i++) {
+                            refs[i].addEventListener('click', function(e) {
+                                e.stopPropagation(); // Останавливаем всплытие к параграфу!
+                                var fnId = this.getAttribute('data-fn');
+                                if (footnotes[fnId]) {
+                                    if ($footnoteTitle) $footnoteTitle.textContent = 'Пояснение ' + fnId;
+                                    if ($footnoteText) $footnoteText.innerHTML = footnotes[fnId];
+                                    if ($footnoteModal) $footnoteModal.classList.add('open');
+                                }
+                            });
+                        }
+                        node.parentNode.replaceChild(span, node);
+                    }
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 if (node.classList && node.classList.contains('footnote-ref')) return;
-                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+                var children = Array.from(node.childNodes);
+                for (var j = 0; j < children.length; j++) {
+                    replaceFootnoteRefs(children[j]);
+                }
             }
         }
         if ($content) replaceFootnoteRefs($content);
@@ -477,17 +515,36 @@
             }
         });
 
-        function replaceFootnoteRefs(node) {
+                function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\[(\d+)\]/g;
-                if (regex.test(node.textContent)) {
-                    var span = document.createElement('span');
-                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
-                    node.parentNode.replaceChild(span, node);
+                if (node.textContent.indexOf('[') !== -1) {
+                    var newHtml = node.textContent.replace(/\[(\d+)\]/g, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    if (newHtml !== node.textContent) {
+                        var span = document.createElement('span');
+                        span.innerHTML = newHtml;
+                        
+                        // Добавляем обработчики клика прямо на созданные сноски
+                        var refs = span.querySelectorAll('.footnote-ref');
+                        for (var i = 0; i < refs.length; i++) {
+                            refs[i].addEventListener('click', function(e) {
+                                e.stopPropagation(); // Останавливаем всплытие к параграфу!
+                                var fnId = this.getAttribute('data-fn');
+                                if (footnotes[fnId]) {
+                                    if ($footnoteTitle) $footnoteTitle.textContent = 'Пояснение ' + fnId;
+                                    if ($footnoteText) $footnoteText.innerHTML = footnotes[fnId];
+                                    if ($footnoteModal) $footnoteModal.classList.add('open');
+                                }
+                            });
+                        }
+                        node.parentNode.replaceChild(span, node);
+                    }
                 }
             } else if (node.nodeType === Node.ELEMENT_NODE) {
                 if (node.classList && node.classList.contains('footnote-ref')) return;
-                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+                var children = Array.from(node.childNodes);
+                for (var j = 0; j < children.length; j++) {
+                    replaceFootnoteRefs(children[j]);
+                }
             }
         }
         if ($content) replaceFootnoteRefs($content);
@@ -606,27 +663,7 @@
         });
     }
 
-    if ($content) {
-        $content.addEventListener('click', function(e) {
-            var target = e.target;
-            // Проверяем, не кликнули ли мы на саму закладку или её потомка
-            while (target && target !== $content) {
-                if (target.classList && target.classList.contains('footnote-ref')) {
-                    e.stopPropagation(); // Не открывать меню параграфа!
-                    var fnId = target.getAttribute('data-fn');
-                    if (footnotes[fnId]) {
-                        if ($footnoteTitle) $footnoteTitle.textContent = 'Пояснение ' + fnId;
-                        if ($footnoteText) $footnoteText.innerHTML = footnotes[fnId];
-                        if ($footnoteModal) $footnoteModal.classList.add('open');
-                    }
-                    return;
-                }
-                target = target.parentNode;
-            }
-        });
-    }
-
-    if ($footnoteClose) {
+if ($footnoteClose) {
         $footnoteClose.addEventListener('click', function() {
             if ($footnoteModal) $footnoteModal.classList.remove('open');
         });
@@ -641,3 +678,5 @@
     loadChapter();
 
 })();
+
+
