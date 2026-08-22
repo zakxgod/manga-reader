@@ -49,6 +49,11 @@
     const $btnAddBookmark = document.getElementById('btn-add-bookmark');
     const $bookmarkBtnText = document.getElementById('bookmark-btn-text');
     let activeParagraph = null;
+    const $footnoteModal = document.getElementById('footnote-modal');
+    const $footnoteTitle = document.getElementById('footnote-title');
+    const $footnoteText = document.getElementById('footnote-text');
+    const $footnoteClose = document.getElementById('footnote-close');
+    const footnotes = {};
 
     // ==================== Telegram WebApp ====================
 
@@ -228,6 +233,50 @@
             var src = img.getAttribute('src');
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://teletype.in' + src);
         });
+        // Инициализация пояснений (footnotes)
+        var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
+        allParagraphs.forEach(function(p) {
+            var text = p.textContent.trim();
+            var match = text.match(/^\[(\d+)\]:\s*(.*)/);
+            if (match) {
+                var fnId = match[1];
+                
+                // Удаляем [1]: из текстового узла, сохраняя форматирование
+                function removePrefix(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        var regex = /\[\d+\]:\s*/;
+                        if (regex.test(node.textContent)) {
+                            node.textContent = node.textContent.replace(regex, '');
+                            return true;
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        for (var i = 0; i < node.childNodes.length; i++) {
+                            if (removePrefix(node.childNodes[i])) return true;
+                        }
+                    }
+                    return false;
+                }
+                removePrefix(p);
+                
+                footnotes[fnId] = p.innerHTML;
+                p.parentNode.removeChild(p);
+            }
+        });
+
+        function replaceFootnoteRefs(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                var regex = /\{(\d+)\]/g;
+                if (regex.test(node.textContent)) {
+                    var span = document.createElement('span');
+                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.classList && node.classList.contains('footnote-ref')) return;
+                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+            }
+        }
+        if ($content) replaceFootnoteRefs($content);
 
         // Инициализация закладок
         var paragraphs = $content ? $content.querySelectorAll('p') : [];
@@ -277,6 +326,50 @@
         if ($content) $content.textContent = '';
         var safeContent = sanitizeHtml(htmlContent);
         if ($content) $content.appendChild(safeContent);
+        // Инициализация пояснений (footnotes)
+        var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
+        allParagraphs.forEach(function(p) {
+            var text = p.textContent.trim();
+            var match = text.match(/^\[(\d+)\]:\s*(.*)/);
+            if (match) {
+                var fnId = match[1];
+                
+                // Удаляем [1]: из текстового узла, сохраняя форматирование
+                function removePrefix(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        var regex = /\[\d+\]:\s*/;
+                        if (regex.test(node.textContent)) {
+                            node.textContent = node.textContent.replace(regex, '');
+                            return true;
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        for (var i = 0; i < node.childNodes.length; i++) {
+                            if (removePrefix(node.childNodes[i])) return true;
+                        }
+                    }
+                    return false;
+                }
+                removePrefix(p);
+                
+                footnotes[fnId] = p.innerHTML;
+                p.parentNode.removeChild(p);
+            }
+        });
+
+        function replaceFootnoteRefs(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                var regex = /\{(\d+)\]/g;
+                if (regex.test(node.textContent)) {
+                    var span = document.createElement('span');
+                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.classList && node.classList.contains('footnote-ref')) return;
+                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+            }
+        }
+        if ($content) replaceFootnoteRefs($content);
 
         // Инициализация закладок
         var paragraphs = $content ? $content.querySelectorAll('p') : [];
@@ -352,6 +445,50 @@
             var src = img.getAttribute('src');
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://telegra.ph' + src);
         });
+        // Инициализация пояснений (footnotes)
+        var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
+        allParagraphs.forEach(function(p) {
+            var text = p.textContent.trim();
+            var match = text.match(/^\[(\d+)\]:\s*(.*)/);
+            if (match) {
+                var fnId = match[1];
+                
+                // Удаляем [1]: из текстового узла, сохраняя форматирование
+                function removePrefix(node) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        var regex = /\[\d+\]:\s*/;
+                        if (regex.test(node.textContent)) {
+                            node.textContent = node.textContent.replace(regex, '');
+                            return true;
+                        }
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        for (var i = 0; i < node.childNodes.length; i++) {
+                            if (removePrefix(node.childNodes[i])) return true;
+                        }
+                    }
+                    return false;
+                }
+                removePrefix(p);
+                
+                footnotes[fnId] = p.innerHTML;
+                p.parentNode.removeChild(p);
+            }
+        });
+
+        function replaceFootnoteRefs(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                var regex = /\{(\d+)\]/g;
+                if (regex.test(node.textContent)) {
+                    var span = document.createElement('span');
+                    span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
+                    node.parentNode.replaceChild(span, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.classList && node.classList.contains('footnote-ref')) return;
+                Array.from(node.childNodes).forEach(replaceFootnoteRefs);
+            }
+        }
+        if ($content) replaceFootnoteRefs($content);
 
         // Инициализация закладок
         var paragraphs = $content ? $content.querySelectorAll('p') : [];
@@ -467,6 +604,41 @@
         });
     }
 
+    if ($content) {
+        $content.addEventListener('click', function(e) {
+            var target = e.target;
+            // Проверяем, не кликнули ли мы на саму закладку или её потомка
+            while (target && target !== $content) {
+                if (target.classList && target.classList.contains('footnote-ref')) {
+                    e.stopPropagation(); // Не открывать меню параграфа!
+                    var fnId = target.getAttribute('data-fn');
+                    if (footnotes[fnId]) {
+                        if ($footnoteTitle) $footnoteTitle.textContent = 'Пояснение ' + fnId;
+                        if ($footnoteText) $footnoteText.innerHTML = footnotes[fnId];
+                        if ($footnoteModal) $footnoteModal.classList.add('open');
+                    }
+                    return;
+                }
+                target = target.parentNode;
+            }
+        });
+    }
+
+    if ($footnoteClose) {
+        $footnoteClose.addEventListener('click', function() {
+            if ($footnoteModal) $footnoteModal.classList.remove('open');
+        });
+    }
+    
+    if ($footnoteModal) {
+        $footnoteModal.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('open');
+        });
+    }
+
     loadChapter();
 
 })();
+
+
+
