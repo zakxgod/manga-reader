@@ -331,16 +331,37 @@
         showContent(title);
     }
 
+    function xorDecrypt(dataStr, keyStr) {
+        let raw = atob(dataStr);
+        let result = new Uint8Array(raw.length);
+        let keyLen = keyStr.length;
+        for (let i = 0; i < raw.length; i++) {
+            result[i] = raw.charCodeAt(i) ^ keyStr.charCodeAt(i % keyLen);
+        }
+        return new TextDecoder('utf-8').decode(result);
+    }
+
     async function loadLocalChapter(slug) {
-        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) throw new Error('Некорректный ID главы');
+        var key = params.get('key');
+        if (!key) throw new Error('Missing chapter key');
+
+        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) throw new Error('Invalid chapter ID');
 
         var response = await fetch('chapters/' + slug + '.json');
         if (!response.ok) {
-            if (response.status === 404) throw new Error('Глава не найдена. GitHub Pages ещё обновляется (1-2 мин).');
-            throw new Error('Ошибка HTTP ' + response.status);
+            if (response.status === 404) throw new Error('Chapter not found on GitHub Pages');
+            throw new Error('HTTP Error ' + response.status);
         }
 
-        var data = await response.json();
+        var encryptedBase64 = await response.text();
+        var data;
+        try {
+            var decryptedText = xorDecrypt(encryptedBase64, key);
+            data = JSON.parse(decryptedText);
+        } catch (e) {
+            throw new Error('Decryption failed. Invalid key.');
+        }
+
         var title = data.title || '';
         var htmlContent = data.content || '';
 
@@ -678,5 +699,6 @@ if ($footnoteClose) {
     loadChapter();
 
 })();
+
 
 
