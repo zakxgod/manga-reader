@@ -8,9 +8,9 @@
                    script-src 'self' https://telegram.org; 
                    style-src 'self' 'unsafe-inline'; 
                    img-src * data: blob:; 
-                   connect-src https://api.telegra.ph https://api.allorigins.win;
+                   connect-src 'self' https://api.telegra.ph https://api.allorigins.win;
                    frame-src 'none';">
-    <title>📖 Читалка</title>
+    <title>Читалка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -18,7 +18,7 @@
     <!-- Загрузка -->
     <div id="loader">
         <div class="spinner"></div>
-        <p>Загрузка главы…</p>
+        <p>Загрузка главы...</p>
     </div>
 
     <!-- Контент главы -->
@@ -36,6 +36,6 @@
         <button id="open-external-btn" class="btn btn-secondary">🌐 Открыть в браузере</button>
     </div>
 
-    <script src="reader.js"></script>
+    <script src="reader.js?v=2"></script>
 </body>
 </html>
