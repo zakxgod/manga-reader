@@ -41,6 +41,14 @@
     const $errorMsg = document.getElementById('error-message') || document.getElementById('error-desc');
     const $retryBtn = document.getElementById('retry-btn');
     const $openBtn = document.getElementById('open-external-btn') || document.getElementById('open-browser-btn');
+    
+    // Элементы закладок
+    const $bookmarkMenu = document.getElementById('bookmark-menu');
+    const $bookmarkOverlay = document.getElementById('bookmark-overlay');
+    const $bookmarkTitle = document.getElementById('bookmark-title');
+    const $btnAddBookmark = document.getElementById('btn-add-bookmark');
+    const $bookmarkBtnText = document.getElementById('bookmark-btn-text');
+    let activeParagraph = null;
 
     // ==================== Telegram WebApp ====================
 
@@ -146,11 +154,9 @@
                     var value = attr.value;
 
                     if (!SAFE_ATTRS.has(attrName)) continue;
-
                     if (attrName === 'src' && tagName === 'img') {
                         if (!isSafeImageSrc(value)) continue;
                     }
-
                     if (attrName === 'href') {
                         if (value.match(/^\s*(javascript|data|vbscript):/i)) continue;
                         el.setAttribute('target', '_blank');
@@ -223,6 +229,35 @@
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://teletype.in' + src);
         });
 
+        // Инициализация закладок
+        var paragraphs = $content ? $content.querySelectorAll('p') : [];
+        var chapterKey = chapterSlug || chapterUrl || 'unknown';
+        var savedIdx = localStorage.getItem('bookmark_' + chapterKey);
+        
+        paragraphs.forEach(function(p, index) {
+            p.dataset.index = index;
+            if (savedIdx !== null && index.toString() === savedIdx) {
+                p.classList.add('bookmarked');
+                setTimeout(function() {
+                    p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500);
+            }
+            p.addEventListener('click', function() {
+                if ($bookmarkMenu) {
+                    activeParagraph = p;
+                    paragraphs.forEach(function(el) { el.classList.remove('active-paragraph'); });
+                    p.classList.add('active-paragraph');
+                    
+                    var isSaved = p.classList.contains('bookmarked');
+                    $bookmarkTitle.textContent = 'Параграф ' + (index + 1);
+                    $bookmarkBtnText.textContent = isSaved ? 'Удалить закладку' : 'Сохранить закладку';
+                    
+                    $bookmarkMenu.classList.add('open');
+                    if ($bookmarkOverlay) $bookmarkOverlay.classList.add('open');
+                }
+            });
+        });
+        
         showContent(title);
     }
 
@@ -243,6 +278,35 @@
         var safeContent = sanitizeHtml(htmlContent);
         if ($content) $content.appendChild(safeContent);
 
+        // Инициализация закладок
+        var paragraphs = $content ? $content.querySelectorAll('p') : [];
+        var chapterKey = chapterSlug || chapterUrl || 'unknown';
+        var savedIdx = localStorage.getItem('bookmark_' + chapterKey);
+        
+        paragraphs.forEach(function(p, index) {
+            p.dataset.index = index;
+            if (savedIdx !== null && index.toString() === savedIdx) {
+                p.classList.add('bookmarked');
+                setTimeout(function() {
+                    p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500);
+            }
+            p.addEventListener('click', function() {
+                if ($bookmarkMenu) {
+                    activeParagraph = p;
+                    paragraphs.forEach(function(el) { el.classList.remove('active-paragraph'); });
+                    p.classList.add('active-paragraph');
+                    
+                    var isSaved = p.classList.contains('bookmarked');
+                    $bookmarkTitle.textContent = 'Параграф ' + (index + 1);
+                    $bookmarkBtnText.textContent = isSaved ? 'Удалить закладку' : 'Сохранить закладку';
+                    
+                    $bookmarkMenu.classList.add('open');
+                    if ($bookmarkOverlay) $bookmarkOverlay.classList.add('open');
+                }
+            });
+        });
+        
         showContent(title);
     }
 
@@ -289,6 +353,35 @@
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://telegra.ph' + src);
         });
 
+        // Инициализация закладок
+        var paragraphs = $content ? $content.querySelectorAll('p') : [];
+        var chapterKey = chapterSlug || chapterUrl || 'unknown';
+        var savedIdx = localStorage.getItem('bookmark_' + chapterKey);
+        
+        paragraphs.forEach(function(p, index) {
+            p.dataset.index = index;
+            if (savedIdx !== null && index.toString() === savedIdx) {
+                p.classList.add('bookmarked');
+                setTimeout(function() {
+                    p.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 500);
+            }
+            p.addEventListener('click', function() {
+                if ($bookmarkMenu) {
+                    activeParagraph = p;
+                    paragraphs.forEach(function(el) { el.classList.remove('active-paragraph'); });
+                    p.classList.add('active-paragraph');
+                    
+                    var isSaved = p.classList.contains('bookmarked');
+                    $bookmarkTitle.textContent = 'Параграф ' + (index + 1);
+                    $bookmarkBtnText.textContent = isSaved ? 'Удалить закладку' : 'Сохранить закладку';
+                    
+                    $bookmarkMenu.classList.add('open');
+                    if ($bookmarkOverlay) $bookmarkOverlay.classList.add('open');
+                }
+            });
+        });
+        
         showContent(title);
     }
 
@@ -327,6 +420,8 @@
         }
     }
 
+    // ==================== Обработчики событий ====================
+
     if ($retryBtn) {
         $retryBtn.addEventListener('click', function() { loadChapter(); });
     }
@@ -334,6 +429,41 @@
     if ($openBtn) {
         $openBtn.addEventListener('click', function() {
             if (chapterUrl) window.open(chapterUrl, '_blank');
+        });
+    }
+
+    if ($bookmarkOverlay) {
+        $bookmarkOverlay.addEventListener('click', function() {
+            if ($bookmarkMenu) $bookmarkMenu.classList.remove('open');
+            $bookmarkOverlay.classList.remove('open');
+            if (activeParagraph) activeParagraph.classList.remove('active-paragraph');
+        });
+    }
+
+    if ($btnAddBookmark) {
+        $btnAddBookmark.addEventListener('click', function() {
+            if (activeParagraph) {
+                var chapterKey = chapterSlug || chapterUrl || 'unknown';
+                var idx = activeParagraph.dataset.index;
+                
+                if (activeParagraph.classList.contains('bookmarked')) {
+                    // Удалить закладку
+                    activeParagraph.classList.remove('bookmarked');
+                    localStorage.removeItem('bookmark_' + chapterKey);
+                } else {
+                    // Снять старые закладки
+                    var allP = $content.querySelectorAll('p');
+                    allP.forEach(function(p) { p.classList.remove('bookmarked'); });
+                    
+                    // Установить новую
+                    activeParagraph.classList.add('bookmarked');
+                    localStorage.setItem('bookmark_' + chapterKey, idx);
+                }
+                
+                if ($bookmarkMenu) $bookmarkMenu.classList.remove('open');
+                if ($bookmarkOverlay) $bookmarkOverlay.classList.remove('open');
+                activeParagraph.classList.remove('active-paragraph');
+            }
         });
     }
 
