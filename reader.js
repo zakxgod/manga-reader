@@ -49,6 +49,8 @@
     const $btnAddBookmark = document.getElementById('btn-add-bookmark');
     const $bookmarkBtnText = document.getElementById('bookmark-btn-text');
     let activeParagraph = null;
+    
+    // Элементы пояснений
     const $footnoteModal = document.getElementById('footnote-modal');
     const $footnoteTitle = document.getElementById('footnote-title');
     const $footnoteText = document.getElementById('footnote-text');
@@ -233,6 +235,7 @@
             var src = img.getAttribute('src');
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://teletype.in' + src);
         });
+
         // Инициализация пояснений (footnotes)
         var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
         allParagraphs.forEach(function(p) {
@@ -241,7 +244,6 @@
             if (match) {
                 var fnId = match[1];
                 
-                // Удаляем [1]: из текстового узла, сохраняя форматирование
                 function removePrefix(node) {
                     if (node.nodeType === Node.TEXT_NODE) {
                         var regex = /\[\d+\]:\s*/;
@@ -265,7 +267,7 @@
 
         function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\{(\d+)\]/g;
+                var regex = /\[(\d+)\]/g;
                 if (regex.test(node.textContent)) {
                     var span = document.createElement('span');
                     span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
@@ -326,6 +328,7 @@
         if ($content) $content.textContent = '';
         var safeContent = sanitizeHtml(htmlContent);
         if ($content) $content.appendChild(safeContent);
+
         // Инициализация пояснений (footnotes)
         var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
         allParagraphs.forEach(function(p) {
@@ -334,7 +337,6 @@
             if (match) {
                 var fnId = match[1];
                 
-                // Удаляем [1]: из текстового узла, сохраняя форматирование
                 function removePrefix(node) {
                     if (node.nodeType === Node.TEXT_NODE) {
                         var regex = /\[\d+\]:\s*/;
@@ -358,7 +360,7 @@
 
         function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\{(\d+)\]/g;
+                var regex = /\[(\d+)\]/g;
                 if (regex.test(node.textContent)) {
                     var span = document.createElement('span');
                     span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
@@ -445,6 +447,7 @@
             var src = img.getAttribute('src');
             if (src && src.startsWith('/')) img.setAttribute('src', 'https://telegra.ph' + src);
         });
+
         // Инициализация пояснений (footnotes)
         var allParagraphs = $content ? Array.from($content.querySelectorAll('p')) : [];
         allParagraphs.forEach(function(p) {
@@ -453,7 +456,6 @@
             if (match) {
                 var fnId = match[1];
                 
-                // Удаляем [1]: из текстового узла, сохраняя форматирование
                 function removePrefix(node) {
                     if (node.nodeType === Node.TEXT_NODE) {
                         var regex = /\[\d+\]:\s*/;
@@ -477,7 +479,7 @@
 
         function replaceFootnoteRefs(node) {
             if (node.nodeType === Node.TEXT_NODE) {
-                var regex = /\{(\d+)\]/g;
+                var regex = /\[(\d+)\]/g;
                 if (regex.test(node.textContent)) {
                     var span = document.createElement('span');
                     span.innerHTML = node.textContent.replace(regex, '<span class="footnote-ref" data-fn="$1">[$1]</span>');
@@ -639,6 +641,3 @@
     loadChapter();
 
 })();
-
-
-
