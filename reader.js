@@ -79,10 +79,11 @@
         console.warn('Telegram WebApp SDK недоступен:', e);
     }
 
-    // ==================== Получение URL главы ====================
+    // ==================== Получение параметров ====================
 
     const params = new URLSearchParams(window.location.search);
-    const chapterUrl = params.get('url');
+    const chapterSlug = params.get('chapter');  // Локальная глава (из Google Docs)
+    const chapterUrl = params.get('url');       // Внешняя ссылка (Telegraph/Teletype)
 
     // ==================== Валидация URL ====================
 
@@ -110,6 +111,8 @@
      */
     function isSafeImageSrc(src) {
         if (!src) return false;
+        // Локальные главы (импорт из Google Docs)
+        if (src.startsWith('images/')) return true;
         // Относительные пути Telegraph
         if (src.startsWith('/file/') || src.startsWith('/upload/')) return true;
         try {
@@ -433,32 +436,73 @@
         showContent(title);
     }
 
+    // ==================== Загрузка локальных глав (GitHub Pages) ====================
+
+    /**
+     * Загружает главу из JSON-файла на том же домене.
+     * Файл: chapters/{slug}.json
+     * Картинки: images/{slug}/img_001.webp (относительные пути)
+     */
+    async function loadLocalChapter(slug) {
+        // Валидация slug (только буквы, цифры, дефис)
+        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) {
+            throw new Error('Некорректный идентификатор главы');
+        }
+
+        var response = await fetch('chapters/' + slug + '.json');
+        if (!response.ok) {
+            if (response.status === 404) {
+                throw new Error('Глава не найдена. Возможно, GitHub Pages ещё обновляется (1-2 минуты).');
+            }
+            throw new Error('Ошибка загрузки: HTTP ' + response.status);
+        }
+
+        var data = await response.json();
+        var title = data.title || '';
+        var htmlContent = data.content || '';
+
+        // Очищаем контейнер
+        $content.textContent = '';
+
+        // Безопасный рендеринг через sanitizeHtml
+        var safeContent = sanitizeHtml(htmlContent);
+        $content.appendChild(safeContent);
+
+        showContent(title);
+    }
+
     // ==================== Главная логика ====================
 
     async function loadChapter() {
-        if (!chapterUrl) {
+        // Приоритет: локальная глава (?chapter=slug) → внешняя ссылка (?url=...)
+        if (!chapterSlug && !chapterUrl) {
             showError('Нет ссылки', 'URL главы не передан');
-            return;
-        }
-
-        if (!isAllowedUrl(chapterUrl)) {
-            showError('Недопустимая ссылка',
-                'Поддерживаются только Telegraph и Teletype. Попробуйте открыть в браузере.');
-            $openBtn.hidden = false;
             return;
         }
 
         showLoader();
 
         try {
-            var hostname = new URL(chapterUrl).hostname.toLowerCase();
+            if (chapterSlug) {
+                // Локальная глава из GitHub Pages
+                await loadLocalChapter(chapterSlug);
+            } else if (chapterUrl) {
+                // Внешняя ссылка
+                if (!isAllowedUrl(chapterUrl)) {
+                    showError('Недопустимая ссылка',
+                        'Поддерживаются только Telegraph и Teletype.');
+                    $openBtn.hidden = false;
+                    return;
+                }
 
-            if (hostname === 'telegra.ph' || hostname.endsWith('.telegra.ph')) {
-                await loadTelegraph(chapterUrl);
-            } else if (hostname === 'teletype.in' || hostname.endsWith('.teletype.in')) {
-                await loadTeletype(chapterUrl);
-            } else {
-                throw new Error('Неизвестный источник');
+                var hostname = new URL(chapterUrl).hostname.toLowerCase();
+                if (hostname === 'telegra.ph' || hostname.endsWith('.telegra.ph')) {
+                    await loadTelegraph(chapterUrl);
+                } else if (hostname === 'teletype.in' || hostname.endsWith('.teletype.in')) {
+                    await loadTeletype(chapterUrl);
+                } else {
+                    throw new Error('Неизвестный источник');
+                }
             }
         } catch (err) {
             console.error('Ошибка загрузки:', err);
