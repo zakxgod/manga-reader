@@ -1,116 +1,91 @@
 /**
  * MangaBot WebApp Reader
- * Читалка глав из Telegraph и Teletype внутри Telegram Mini App.
- *
- * Безопасность:
- * - Валидация доменов URL (только telegra.ph и teletype.in)
- * - DOM-рендеринг без innerHTML (защита от XSS)
- * - Content Security Policy в HTML
- * - Белый список тегов и атрибутов
  */
 
 (function () {
     'use strict';
 
-    // ==================== Конфигурация ====================
-
-    /** Домены, с которых разрешена загрузка контента */
     const ALLOWED_DOMAINS = ['telegra.ph', 'teletype.in'];
-
-    /** API Telegraph для получения контента страниц */
     const TELEGRAPH_API = 'https://api.telegra.ph/getPage/';
+    const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
-    /** CORS proxy для Teletype */
-    const CORS_PROXY = 'https://api.allorigins.win/get?url=';
+    const SAFE_TAGS = new Set([
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'blockquote', 'pre', 'code',
+        'ul', 'ol', 'li',
+        'figure', 'figcaption', 'img',
+        'hr', 'div', 'span', 'aside',
+        'iframe', 'video', 'source'
+    ]);
 
-    /** Разрешённые HTML теги (базовая защита от XSS) */
-    const SAFE_TAGS = [
-        'p', 'br', 'b', 'strong', 'i', 'em', 'u', 's', 'strike', 'del',
-        'a', 'ul', 'ol', 'li', 'blockquote', 'pre', 'code',
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'hr', 'figure', 'figcaption'
-    ];
+    const SAFE_ATTRS = new Set([
+        'src', 'href', 'alt', 'title', 'class',
+        'target', 'rel', 'width', 'height',
+        'type', 'controls', 'autoplay', 'muted', 'style'
+    ]);
 
-    /** Безопасные домены для картинок */
     const SAFE_IMAGE_DOMAINS = [
-        'telegra.ph', 'teletype.in', 'imagedelivery.net',
-        'vk.com', 'userapi.com', 'imgur.com', 'discordapp.com', 'discordapp.net'
+        'telegra.ph', 'teletype.in', 'leonardo.osnova.io',
+        'cdn.leonardo.osnova.io', 'imgur.com', 'i.imgur.com'
     ];
 
-    // ==================== Элементы DOM ====================
+    // ==================== DOM-элементы ====================
 
-    const $title = document.getElementById('title');
-    const $content = document.getElementById('content');
     const $loader = document.getElementById('loader');
     const $reader = document.getElementById('reader');
+    const $title = document.getElementById('chapter-title') || document.getElementById('title');
+    const $content = document.getElementById('chapter-content') || document.getElementById('content');
     const $error = document.getElementById('error-screen') || document.getElementById('error');
     const $errorTitle = document.getElementById('error-title');
     const $errorMsg = document.getElementById('error-message') || document.getElementById('error-desc');
     const $retryBtn = document.getElementById('retry-btn');
     const $openBtn = document.getElementById('open-external-btn') || document.getElementById('open-browser-btn');
 
-    // ==================== Инициализация Telegram ====================
+    // ==================== Telegram WebApp ====================
 
-    let tg;
+    let tg = null;
     try {
         tg = window.Telegram && window.Telegram.WebApp;
         if (tg) {
             tg.ready();
             tg.expand();
-            // Применяем цвета темы Telegram
-            document.body.style.backgroundColor = 'var(--tg-theme-bg-color, #ffffff)';
-            document.body.style.color = 'var(--tg-theme-text-color, #000000)';
+            if (tg.BackButton) {
+                tg.BackButton.show();
+                tg.BackButton.onClick(function () {
+                    tg.close();
+                });
+            }
         }
     } catch (e) {
         console.warn('Telegram WebApp SDK недоступен:', e);
     }
 
-    // ==================== Получение параметров ====================
-
     const params = new URLSearchParams(window.location.search);
-    const chapterSlug = params.get('chapter');  // Локальная глава (из Google Docs)
-    const chapterUrl = params.get('url');       // Внешняя ссылка (Telegraph/Teletype)
+    const chapterSlug = params.get('chapter');
+    const chapterUrl = params.get('url');
 
     // ==================== Валидация URL ====================
 
-    /**
-     * Проверяет, что URL принадлежит разрешённому домену.
-     * Защита от загрузки произвольных страниц через наш webapp.
-     */
     function isAllowedUrl(url) {
         try {
             var parsed = new URL(url);
-            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-                return false;
-            }
+            if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
             var hostname = parsed.hostname.toLowerCase();
-            return ALLOWED_DOMAINS.some(function (d) {
-                return hostname === d || hostname.endsWith('.' + d);
-            });
-        } catch (e) {
-            return false;
-        }
+            return ALLOWED_DOMAINS.some(function(d) { return hostname === d || hostname.endsWith('.' + d); });
+        } catch (e) { return false; }
     }
 
-    /**
-     * Проверяет, безопасен ли URL для картинки.
-     */
     function isSafeImageSrc(src) {
         if (!src) return false;
-        // Разрешаем base64 картинки (Google Docs иногда их так отдаёт)
         if (src.startsWith('data:image/')) return true;
-        // Локальные главы (импорт из Google Docs)
         if (src.startsWith('images/')) return true;
-        // Относительные пути Telegraph
         if (src.startsWith('/file/') || src.startsWith('/upload/')) return true;
         try {
             var parsed = new URL(src);
             var hostname = parsed.hostname.toLowerCase();
-            return SAFE_IMAGE_DOMAINS.some(function (d) {
-                return hostname === d || hostname.endsWith('.' + d);
-            });
-        } catch (e) {
-            return false;
-        }
+            return SAFE_IMAGE_DOMAINS.some(function(d) { return hostname === d || hostname.endsWith('.' + d); });
+        } catch (e) { return false; }
     }
 
     // ==================== UI-функции ====================
@@ -122,227 +97,142 @@
     }
 
     function showContent(title) {
-        if (title && $title) {
-            $title.textContent = title;
-            document.title = title;
-        }
         if ($loader) $loader.hidden = true;
         if ($error) $error.hidden = true;
         if ($reader) $reader.hidden = false;
+        if (title && $title) $title.textContent = title;
     }
 
-    function showError(title, desc) {
-        if ($errorTitle) $errorTitle.textContent = title;
-        if ($errorMsg) $errorMsg.textContent = desc;
+    function showError(title, message) {
         if ($loader) $loader.hidden = true;
         if ($reader) $reader.hidden = true;
         if ($error) $error.hidden = false;
+        if ($errorTitle) $errorTitle.textContent = title || 'Ошибка';
+        if ($errorMsg) $errorMsg.textContent = message || '';
     }
 
-    // ==================== Рендеринг HTML (Анти-XSS) ====================
+    // ==================== Безопасный парсер ====================
 
-    /**
-     * Безопасно преобразует строку HTML в DOM элементы.
-     * Игнорирует все скрипты, on-события и опасные теги.
-     */
     function sanitizeHtml(htmlString) {
         var parser = new DOMParser();
         var doc = parser.parseFromString(htmlString, 'text/html');
         var fragment = document.createDocumentFragment();
 
-        function cleanNode(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                return document.createTextNode(node.textContent);
+        function processNode(sourceNode) {
+            if (sourceNode.nodeType === Node.TEXT_NODE) {
+                return document.createTextNode(sourceNode.textContent);
             }
 
-            if (node.nodeType !== Node.ELEMENT_NODE) {
-                return null;
-            }
+            if (sourceNode.nodeType === Node.ELEMENT_NODE) {
+                var tagName = sourceNode.tagName.toLowerCase();
 
-            var tagName = node.tagName.toLowerCase();
+                if (tagName === 'br') return document.createElement('br');
 
-            // Пропускаем запрещенные теги
-            if (SAFE_TAGS.indexOf(tagName) === -1) {
-                // Если тег не разрешен, пытаемся вытащить его текст
-                var textNode = document.createTextNode(node.textContent);
-                return textNode;
-            }
-
-            var el = document.createElement(tagName);
-
-            // Обработка разрешенных атрибутов
-            if (tagName === 'a') {
-                var href = node.getAttribute('href');
-                if (href && (href.startsWith('http://') || href.startsWith('https://'))) {
-                    el.setAttribute('href', href);
-                    el.setAttribute('target', '_blank');
-                    el.setAttribute('rel', 'noopener noreferrer');
+                if (!SAFE_TAGS.has(tagName)) {
+                    var frag = document.createDocumentFragment();
+                    var children = sourceNode.childNodes;
+                    for (var i = 0; i < children.length; i++) {
+                        var processed = processNode(children[i]);
+                        if (processed) frag.appendChild(processed);
+                    }
+                    return frag;
                 }
-            } else if (tagName === 'img') {
-                var src = node.getAttribute('src');
-                if (isSafeImageSrc(src)) {
-                    el.setAttribute('src', src);
-                    el.setAttribute('loading', 'lazy');
-                } else {
-                    return document.createTextNode('[Картинка заблокирована]');
-                }
-            }
 
-            // Копируем дочерние элементы рекурсивно
-            var child = node.firstChild;
-            while (child) {
-                var safeChild = cleanNode(child);
-                if (safeChild) {
-                    el.appendChild(safeChild);
-                }
-                child = child.nextSibling;
-            }
+                var el = document.createElement(tagName);
+                var attrs = sourceNode.attributes;
+                for (var j = 0; j < attrs.length; j++) {
+                    var attr = attrs[j];
+                    var attrName = attr.name.toLowerCase();
+                    var value = attr.value;
 
-            return el;
+                    if (!SAFE_ATTRS.has(attrName)) continue;
+
+                    if (attrName === 'src' && tagName === 'img') {
+                        if (!isSafeImageSrc(value)) continue;
+                    }
+
+                    if (attrName === 'href') {
+                        if (value.match(/^\s*(javascript|data|vbscript):/i)) continue;
+                        el.setAttribute('target', '_blank');
+                        el.setAttribute('rel', 'noopener noreferrer');
+                    }
+
+                    el.setAttribute(attrName, value);
+                }
+
+                if (tagName === 'img') {
+                    el.loading = 'lazy';
+                    el.decoding = 'async';
+                    el.classList.add('loading');
+                    el.addEventListener('load', function () {
+                        el.classList.remove('loading');
+                        el.classList.add('loaded');
+                    });
+                    el.addEventListener('error', function () {
+                        el.classList.remove('loading');
+                        el.alt = '⚠️ Не удалось загрузить картинку';
+                    });
+                }
+
+                var childNodes = sourceNode.childNodes;
+                for (var k = 0; k < childNodes.length; k++) {
+                    var child = processNode(childNodes[k]);
+                    if (child) el.appendChild(child);
+                }
+                return el;
+            }
+            return null;
         }
 
-        var child = doc.body.firstChild;
-        while (child) {
-            var safeChild = cleanNode(child);
-            if (safeChild) {
-                fragment.appendChild(safeChild);
-            }
-            child = child.nextSibling;
+        var bodyChildren = doc.body.childNodes;
+        for (var i = 0; i < bodyChildren.length; i++) {
+            var result = processNode(bodyChildren[i]);
+            if (result) fragment.appendChild(result);
         }
 
         return fragment;
     }
 
-
-    function telegraphNodeToHtml(node) {
-        if (typeof node === 'string') {
-            return node
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;');
-        }
-        if (!node.tag) return '';
-
-        var html = '<' + node.tag;
-        if (node.attrs) {
-            for (var key in node.attrs) {
-                html += ' ' + key + '="' + node.attrs[key].replace(/"/g, '&quot;') + '"';
-            }
-        }
-        html += '>';
-
-        if (node.children) {
-            html += node.children.map(telegraphNodeToHtml).join('');
-        }
-
-        html += '</' + node.tag + '>';
-        return html;
-    }
-
-    // ==================== Загрузка Telegraph ====================
-
-    async function loadTelegraph(url) {
-        var pathname = new URL(url).pathname;
-        if (!pathname || pathname === '/') {
-            throw new Error('Некорректная ссылка Telegraph');
-        }
-
-        var path = pathname.substring(1);
-
-        var response = await fetch(TELEGRAPH_API + path + '?return_content=true');
-        if (!response.ok) {
-            throw new Error('Ошибка сети при загрузке Telegraph');
-        }
-
-        var data = await response.json();
-        if (!data.ok) {
-            throw new Error(data.error || 'Ошибка API Telegraph');
-        }
-
-        var page = data.result;
-        var title = page.title || '';
-
-        var htmlContent = '';
-        if (page.content) {
-            htmlContent = page.content.map(telegraphNodeToHtml).join('');
-        }
-
-        if ($content) $content.textContent = '';
-
-        var safeContent = sanitizeHtml(htmlContent);
-        if ($content) $content.appendChild(safeContent);
-
-        var images = $content ? $content.querySelectorAll('img') : [];
-        images.forEach(function (img) {
-            var src = img.getAttribute('src');
-            if (src && src.startsWith('/')) {
-                img.setAttribute('src', 'https://telegra.ph' + src);
-            }
-        });
-
-        showContent(title);
-    }
-
-    // ==================== Загрузка Teletype ====================
+    // ==================== Загрузки ====================
 
     async function loadTeletype(url) {
         var proxyUrl = CORS_PROXY + encodeURIComponent(url);
-
         var response = await fetch(proxyUrl);
-        if (!response.ok) {
-            throw new Error('Не удалось загрузить страницу Teletype через прокси');
-        }
+        if (!response.ok) throw new Error('Не удалось загрузить страницу Teletype');
 
-        var data = await response.json();
-        if (!data.contents) {
-            throw new Error('Пустой ответ от прокси');
-        }
-
-        var rawHtml = data.contents;
+        var html = await response.text();
         var parser = new DOMParser();
-        var doc = parser.parseFromString(rawHtml, 'text/html');
+        var doc = parser.parseFromString(html, 'text/html');
 
-        var title = '';
-        var titleTag = doc.querySelector('title');
-        if (titleTag) {
-            title = titleTag.textContent.replace(' — Teletype', '');
-        }
+        var titleEl = doc.querySelector('h1') || doc.querySelector('.content-title');
+        var title = titleEl ? titleEl.textContent.trim() : '';
 
-        var article = doc.querySelector('article') || doc.querySelector('.editor-content');
-        if (!article) {
-            throw new Error('Не удалось найти контент на странице Teletype');
-        }
+        var articleEl = doc.querySelector('.content-inner')
+                     || doc.querySelector('article .block-text')
+                     || doc.querySelector('article');
+
+        if (!articleEl) throw new Error('Не удалось извлечь контент Teletype');
 
         if ($content) $content.textContent = '';
-
-        var safeContent = sanitizeHtml(article.innerHTML);
+        var safeContent = sanitizeHtml(articleEl.innerHTML);
         if ($content) $content.appendChild(safeContent);
 
         var images = $content ? $content.querySelectorAll('img') : [];
-        images.forEach(function (img) {
+        images.forEach(function(img) {
             var src = img.getAttribute('src');
-            if (src && src.startsWith('/')) {
-                img.setAttribute('src', 'https://teletype.in' + src);
-            }
+            if (src && src.startsWith('/')) img.setAttribute('src', 'https://teletype.in' + src);
         });
 
         showContent(title);
     }
 
-    // ==================== Загрузка локальных глав (GitHub Pages) ====================
-
     async function loadLocalChapter(slug) {
-        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) {
-            throw new Error('Некорректный идентификатор главы');
-        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(slug)) throw new Error('Некорректный ID главы');
 
         var response = await fetch('chapters/' + slug + '.json');
         if (!response.ok) {
-            if (response.status === 404) {
-                throw new Error('Глава не найдена. Возможно, GitHub Pages ещё обновляется (1-2 минуты).');
-            }
-            throw new Error('Ошибка загрузки: HTTP ' + response.status);
+            if (response.status === 404) throw new Error('Глава не найдена. GitHub Pages ещё обновляется (1-2 мин).');
+            throw new Error('Ошибка HTTP ' + response.status);
         }
 
         var data = await response.json();
@@ -350,9 +240,54 @@
         var htmlContent = data.content || '';
 
         if ($content) $content.textContent = '';
-
         var safeContent = sanitizeHtml(htmlContent);
         if ($content) $content.appendChild(safeContent);
+
+        showContent(title);
+    }
+
+    async function loadTelegraph(url) {
+        var path = new URL(url).pathname.replace(/^\//, '');
+        if (!path) throw new Error('Некорректная ссылка Telegraph');
+
+        var apiUrl = TELEGRAPH_API + encodeURIComponent(path) + '?return_content=true';
+        var response = await fetch(apiUrl);
+        if (!response.ok) throw new Error('Telegraph API ошибка ' + response.status);
+
+        var data = await response.json();
+        if (!data.ok || !data.result) throw new Error('Страница не найдена на Telegraph');
+
+        var page = data.result;
+        var title = page.title || '';
+
+        function nodeToHtml(node) {
+            if (typeof node === 'string') {
+                return node.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+            if (!node.tag) return '';
+            var html = '<' + node.tag;
+            if (node.attrs) {
+                for (var key in node.attrs) {
+                    html += ' ' + key + '="' + node.attrs[key].replace(/"/g, '&quot;') + '"';
+                }
+            }
+            html += '>';
+            if (node.children) html += node.children.map(nodeToHtml).join('');
+            html += '</' + node.tag + '>';
+            return html;
+        }
+
+        var htmlContent = page.content ? page.content.map(nodeToHtml).join('') : '';
+
+        if ($content) $content.textContent = '';
+        var safeContent = sanitizeHtml(htmlContent);
+        if ($content) $content.appendChild(safeContent);
+
+        var images = $content ? $content.querySelectorAll('img') : [];
+        images.forEach(function(img) {
+            var src = img.getAttribute('src');
+            if (src && src.startsWith('/')) img.setAttribute('src', 'https://telegra.ph' + src);
+        });
 
         showContent(title);
     }
@@ -372,8 +307,7 @@
                 await loadLocalChapter(chapterSlug);
             } else if (chapterUrl) {
                 if (!isAllowedUrl(chapterUrl)) {
-                    showError('Недопустимая ссылка',
-                        'Поддерживаются только Telegraph и Teletype.');
+                    showError('Недопустимая ссылка', 'Только Telegraph и Teletype.');
                     if ($openBtn) $openBtn.hidden = false;
                     return;
                 }
@@ -388,31 +322,20 @@
                 }
             }
         } catch (err) {
-            console.error('Ошибка загрузки:', err);
-            showError(
-                'Не удалось загрузить главу',
-                (err.message || 'Попробуйте снова или откройте в браузере')
-            );
+            console.error('Ошибка:', err);
+            showError('Ошибка загрузки', err.message || 'Попробуйте снова');
         }
     }
 
-    // ==================== Обработчики событий ====================
-
     if ($retryBtn) {
-        $retryBtn.addEventListener('click', function () {
-            loadChapter();
-        });
+        $retryBtn.addEventListener('click', function() { loadChapter(); });
     }
-
+    
     if ($openBtn) {
-        $openBtn.addEventListener('click', function () {
-            if (chapterUrl) {
-                window.open(chapterUrl, '_blank');
-            }
+        $openBtn.addEventListener('click', function() {
+            if (chapterUrl) window.open(chapterUrl, '_blank');
         });
     }
-
-    // ==================== Запуск ====================
 
     loadChapter();
 
