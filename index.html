@@ -10,24 +10,21 @@
                    img-src * data: blob:; 
                    connect-src 'self' https://api.telegra.ph https://api.allorigins.win;
                    frame-src 'none';">
-    <title>Читалка</title>
+    <title>Глава</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Загрузка -->
     <div id="loader">
         <div class="spinner"></div>
         <p>Загрузка главы...</p>
     </div>
 
-    <!-- Контент главы -->
     <article id="reader" hidden>
         <h1 id="chapter-title"></h1>
         <div id="chapter-content"></div>
     </article>
 
-    <!-- Ошибка -->
     <div id="error-screen" hidden>
         <div class="error-icon">⚠️</div>
         <h2 id="error-title">Не удалось загрузить</h2>
@@ -36,6 +33,16 @@
         <button id="open-external-btn" class="btn btn-secondary">🌐 Открыть в браузере</button>
     </div>
 
-    <script src="reader.js?v=2"></script>
+    <!-- Всплывающее меню закладок -->
+    <div id="bookmark-overlay"></div>
+    <div id="bookmark-menu">
+        <div class="bookmark-header" id="bookmark-title">Параграф</div>
+        <div class="bookmark-option" id="btn-add-bookmark">
+            <svg viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/></svg>
+            <span id="bookmark-btn-text">Сохранить закладку</span>
+        </div>
+    </div>
+
+    <script src="reader.js?v=3"></script>
 </body>
 </html>
