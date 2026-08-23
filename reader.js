@@ -141,6 +141,7 @@
         $reader.hidden = false;
         $error.hidden = true;
         if (title) $title.textContent = title;
+        if (typeof postProcessContent === 'function') postProcessContent();
     }
 
     function showError(title, message) {
@@ -500,6 +501,207 @@
         $content.appendChild(safeContent);
 
         showContent(title);
+    }
+
+    // ==================== Интерактив (Сноски, Закладки, Защита) ====================
+
+    let footnotes = {};
+    let bookmarkBar = null;
+    let longPressTimer = null;
+
+    function injectUI() {
+        if (!document.getElementById('bookmark-bar')) {
+            bookmarkBar = document.createElement('div');
+            bookmarkBar.id = 'bookmark-bar';
+            bookmarkBar.hidden = true;
+            bookmarkBar.innerHTML = `
+                <div class="bookmark-label" id="bookmark-label">Параграф X</div>
+                <button class="bookmark-save" id="bookmark-save-btn">🔖 Сохранить закладку</button>
+            `;
+            document.body.appendChild(bookmarkBar);
+        }
+    }
+
+    function showFootnoteModal(title, text) {
+        var overlay = document.createElement('div');
+        overlay.className = 'footnote-overlay';
+        var card = document.createElement('div');
+        card.className = 'footnote-card';
+        
+        var titleEl = document.createElement('div');
+        titleEl.className = 'footnote-title';
+        titleEl.textContent = title;
+        
+        var bodyEl = document.createElement('div');
+        bodyEl.className = 'footnote-body';
+        bodyEl.textContent = text;
+        
+        var closeBtn = document.createElement('button');
+        closeBtn.className = 'btn footnote-close';
+        closeBtn.textContent = 'Закрыть';
+        
+        card.appendChild(titleEl);
+        card.appendChild(bodyEl);
+        card.appendChild(closeBtn);
+        overlay.appendChild(card);
+        
+        document.body.appendChild(overlay);
+        
+        function close() {
+            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        }
+        
+        closeBtn.addEventListener('click', close);
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay) close();
+        });
+    }
+
+    function processFootnotes() {
+        footnotes = {};
+        var elements = $content.querySelectorAll('p, div, h1, h2, h3, h4, li');
+        
+        // 1. Ищем расшифровки сносок в конце текста
+        elements.forEach(function(el) {
+            var text = el.textContent.trim();
+            var match = text.match(/^\[(\d+)\]:\s*(.+)$/);
+            if (match) {
+                footnotes[match[1]] = match[2];
+                el.style.display = 'none'; // Прячем параграф-пояснение
+            }
+        });
+
+        // 2. Ищем [N] в тексте и заменяем на ссылки
+        function replaceTextNodes(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                var text = node.textContent;
+                var regex = /\[(\d+)\]/g;
+                if (regex.test(text)) {
+                    var fragment = document.createDocumentFragment();
+                    var lastIndex = 0;
+                    text.replace(regex, function(match, p1, index) {
+                        if (index > lastIndex) {
+                            fragment.appendChild(document.createTextNode(text.substring(lastIndex, index)));
+                        }
+                        var span = document.createElement('span');
+                        span.className = 'footnote-ref';
+                        span.textContent = match;
+                        span.dataset.fn = p1;
+                        span.addEventListener('click', function(e) {
+                            e.stopPropagation(); // Отключаем долгое нажатие для закладки
+                            var fnText = footnotes[p1] || 'Пояснение не найдено';
+                            showFootnoteModal('Пояснение ' + p1, fnText);
+                        });
+                        fragment.appendChild(span);
+                        lastIndex = index + match.length;
+                    });
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(document.createTextNode(text.substring(lastIndex)));
+                    }
+                    node.parentNode.replaceChild(fragment, node);
+                }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.className !== 'footnote-ref') {
+                    Array.from(node.childNodes).forEach(replaceTextNodes);
+                }
+            }
+        }
+        replaceTextNodes($content);
+    }
+
+    function setupBookmarks() {
+        var paras = $content.querySelectorAll('p');
+        var currentSlug = chapterSlug || chapterUrl;
+        
+        paras.forEach(function(p, index) {
+            var pNum = index + 1;
+            p.dataset.paraIdx = pNum;
+            p.id = 'para-' + pNum;
+            
+            function startPress(e) {
+                if (e.target.closest('.footnote-ref')) return;
+                clearTimeout(longPressTimer);
+                longPressTimer = setTimeout(function() {
+                    showBookmarkBar(pNum, currentSlug);
+                }, 600); // 600мс для вызова меню закладки
+            }
+            
+            function cancelPress() {
+                clearTimeout(longPressTimer);
+            }
+
+            p.addEventListener('touchstart', startPress, {passive: true});
+            p.addEventListener('touchend', cancelPress);
+            p.addEventListener('touchmove', cancelPress);
+            p.addEventListener('mousedown', startPress);
+            p.addEventListener('mouseup', cancelPress);
+            p.addEventListener('mouseleave', cancelPress);
+        });
+        
+        // Клик мимо скрывает плашку
+        document.addEventListener('click', function(e) {
+            if (bookmarkBar && !bookmarkBar.contains(e.target) && !e.target.closest('p')) {
+                bookmarkBar.hidden = true;
+            }
+        });
+
+        // Загрузка сохранённой закладки
+        if (currentSlug) {
+            var savedPara = localStorage.getItem('manga_bookmark_' + currentSlug);
+            if (savedPara) {
+                setTimeout(function() {
+                    var target = document.getElementById('para-' + savedPara);
+                    if (target) {
+                        target.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    }
+                }, 300);
+            }
+        }
+    }
+
+    function showBookmarkBar(pNum, slug) {
+        if (!bookmarkBar) return;
+        var label = bookmarkBar.querySelector('#bookmark-label');
+        var btn = bookmarkBar.querySelector('#bookmark-save-btn');
+        
+        label.textContent = 'Параграф ' + pNum;
+        bookmarkBar.hidden = false;
+        
+        var newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', function() {
+            if (slug) {
+                localStorage.setItem('manga_bookmark_' + slug, pNum);
+                var originalText = newBtn.textContent;
+                newBtn.textContent = '✅ Сохранено!';
+                newBtn.style.background = '#4CAF50';
+                setTimeout(function() {
+                    bookmarkBar.hidden = true;
+                    newBtn.textContent = originalText;
+                    newBtn.style.background = '';
+                }, 1500);
+            }
+        });
+    }
+
+    function setupCopyProtection() {
+        $content.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+        });
+        $content.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+        });
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+        });
+    }
+
+    function postProcessContent() {
+        injectUI();
+        processFootnotes();
+        setupBookmarks();
+        setupCopyProtection();
     }
 
     // ==================== Главная логика ====================
