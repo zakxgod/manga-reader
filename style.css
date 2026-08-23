@@ -273,3 +273,142 @@ html {
     hyphens: auto;
     -webkit-hyphens: auto;
 }
+
+/* ==================== Защита от копирования ==================== */
+#chapter-content {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+#chapter-content img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
+
+/* ==================== Подчёркивание ==================== */
+#chapter-content u {
+    text-decoration: underline;
+}
+
+/* ==================== Сноски [N] ==================== */
+.footnote-ref {
+    color: var(--tg-theme-link-color, var(--link));
+    cursor: pointer;
+    font-weight: 600;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.footnote-ref:active {
+    opacity: 0.6;
+}
+
+/* Модалка сноски */
+.footnote-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    padding: 24px;
+    animation: fadeInOverlay 0.2s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.footnote-card {
+    background: var(--tg-theme-bg-color, var(--bg));
+    border-radius: 16px;
+    padding: 20px;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.footnote-title {
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: var(--tg-theme-link-color, var(--link));
+}
+
+.footnote-body {
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    font-weight: 400;
+    font-style: normal;
+    text-decoration: none;
+}
+
+.footnote-close {
+    width: 100%;
+    text-align: center;
+}
+
+/* ==================== Закладки (плашка внизу) ==================== */
+#bookmark-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    border-top: 1px solid var(--tg-theme-hint-color, var(--border));
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 100;
+    animation: slideUp 0.2s ease;
+}
+
+#bookmark-bar[hidden] {
+    display: none !important;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+}
+
+.bookmark-label {
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.bookmark-save {
+    background: var(--tg-theme-button-color, var(--link));
+    color: var(--tg-theme-button-text-color, #ffffff);
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    width: 100%;
+    max-width: 300px;
+}
+
+.bookmark-save:active {
+    opacity: 0.7;
+}
