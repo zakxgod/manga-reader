@@ -839,10 +839,20 @@
             return;
         }
 
+        var key =
+            'manga_bookmark_' + slug;
+
+        var savedPara =
+            localStorage.getItem(key);
+
+        var isBookmarked =
+            savedPara === String(pNum);
+
         pendingBookmark = {
             pNum: pNum,
             slug: slug,
-            paragraph: paragraph
+            paragraph: paragraph,
+            isBookmarked: isBookmarked
         };
 
         if (bookmarkTitle) {
@@ -852,7 +862,9 @@
 
         if (bookmarkButtonText) {
             bookmarkButtonText.textContent =
-                'Сохранить закладку';
+                isBookmarked
+                    ? 'Удалить закладку'
+                    : 'Сохранить закладку';
         }
 
         bookmarkMenu.classList.add('open');
@@ -893,12 +905,41 @@
             'manga_bookmark_'
             + pendingBookmark.slug;
 
+        // ========================================
+        // УДАЛЕНИЕ существующей закладки
+        // ========================================
+
+        if (pendingBookmark.isBookmarked) {
+            localStorage.removeItem(key);
+
+            if (pendingBookmark.paragraph) {
+                pendingBookmark.paragraph
+                    .classList.remove('bookmarked');
+            }
+
+            if (bookmarkButtonText) {
+                bookmarkButtonText.textContent =
+                    '✅ Закладка удалена';
+            }
+
+            setTimeout(function () {
+                closeBookmarkMenu();
+            }, 650);
+
+            return;
+        }
+
+        // ========================================
+        // ДОБАВЛЕНИЕ / ПЕРЕНОС закладки
+        // ========================================
+
         localStorage.setItem(
             key,
             String(pendingBookmark.pNum)
         );
 
-        // Убираем старое визуальное выделение
+        // Убираем визуальное выделение
+        // со старой закладки, если она была.
         var previous =
             $content.querySelector(
                 'p.bookmarked'
@@ -910,7 +951,7 @@
             );
         }
 
-        // Подсвечиваем новую закладку
+        // Подсвечиваем новый параграф.
         if (pendingBookmark.paragraph) {
             pendingBookmark.paragraph
                 .classList.add('bookmarked');
@@ -918,12 +959,12 @@
 
         if (bookmarkButtonText) {
             bookmarkButtonText.textContent =
-                '✅ Сохранено';
+                '✅ Закладка добавлена';
         }
 
         setTimeout(function () {
             closeBookmarkMenu();
-        }, 500);
+        }, 650);
     }
 
     function setupCopyProtection() {
