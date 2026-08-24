@@ -36,6 +36,63 @@
         <button id="open-external-btn" class="btn btn-secondary">🌐 Открыть в браузере</button>
     </div>
 
+    <!-- ==================== Закладка ==================== -->
+    <div id="bookmark-overlay"></div>
+
+    <div id="bookmark-menu">
+        <div
+            class="bookmark-header"
+            id="bookmark-title"
+        >
+            Параграф
+        </div>
+
+        <div
+            class="bookmark-option"
+            id="btn-add-bookmark"
+            role="button"
+            tabindex="0"
+        >
+            <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+            >
+                <path
+                    d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"
+                />
+            </svg>
+
+            <span id="bookmark-btn-text">
+                Сохранить закладку
+            </span>
+        </div>
+    </div>
+
+    <!-- ==================== Сноска ==================== -->
+    <div
+        id="footnote-modal"
+        aria-hidden="true"
+    >
+        <div
+            class="modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="footnote-title"
+        >
+            <div id="footnote-title"></div>
+
+            <div id="footnote-text"></div>
+
+            <button
+                id="footnote-close"
+                class="btn"
+                type="button"
+            >
+                Закрыть
+            </button>
+        </div>
+    </div>
+
     <script src="reader.js"></script>
 </body>
 </html>

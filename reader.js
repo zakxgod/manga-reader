@@ -41,6 +41,22 @@
         'type', 'controls', 'autoplay', 'muted'
     ]);
 
+    /**
+     * Элементы, для которых разрешено сохранить только text-align.
+     * Остальные inline CSS-свойства из HTML игнорируются.
+     */
+    const ALIGNABLE_TAGS = new Set([
+        'p', 'div',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6'
+    ]);
+
+    const SAFE_TEXT_ALIGNS = new Set([
+        'left',
+        'center',
+        'right',
+        'justify'
+    ]);
+
     /** Домены, с которых разрешена загрузка картинок */
     const SAFE_IMAGE_DOMAINS = [
         'telegra.ph', 'teletype.in', 'leonardo.osnova.io',
@@ -141,7 +157,6 @@
         $reader.hidden = false;
         $error.hidden = true;
         if (title) $title.textContent = title;
-        if (typeof postProcessContent === 'function') postProcessContent();
     }
 
     function showError(title, message) {
@@ -359,6 +374,22 @@
                     el.setAttribute(attrName, value);
                 }
 
+                // Сохраняем из inline CSS ТОЛЬКО безопасное выравнивание текста.
+                // Полный style намеренно не копируется.
+                if (ALIGNABLE_TAGS.has(tagName)) {
+                    var textAlign = '';
+
+                    if (sourceNode.style && sourceNode.style.textAlign) {
+                        textAlign = sourceNode.style.textAlign
+                            .toLowerCase()
+                            .trim();
+                    }
+
+                    if (SAFE_TEXT_ALIGNS.has(textAlign)) {
+                        el.style.textAlign = textAlign;
+                    }
+                }
+
                 // Lazy loading для картинок
                 if (tagName === 'img') {
                     el.loading = 'lazy';
@@ -506,55 +537,126 @@
     // ==================== Интерактив (Сноски, Закладки, Защита) ====================
 
     let footnotes = {};
-    let bookmarkBar = null;
+
+    let bookmarkMenu = null;
+    let bookmarkOverlay = null;
+    let bookmarkTitle = null;
+    let bookmarkButton = null;
+    let bookmarkButtonText = null;
+
+    let footnoteModal = null;
+    let footnoteTitle = null;
+    let footnoteText = null;
+    let footnoteClose = null;
+
+    let pendingBookmark = null;
     let longPressTimer = null;
 
+    let copyProtectionReady = false;
+
     function injectUI() {
-        if (!document.getElementById('bookmark-bar')) {
-            bookmarkBar = document.createElement('div');
-            bookmarkBar.id = 'bookmark-bar';
-            bookmarkBar.hidden = true;
-            bookmarkBar.innerHTML = `
-                <div class="bookmark-label" id="bookmark-label">Параграф X</div>
-                <button class="bookmark-save" id="bookmark-save-btn">🔖 Сохранить закладку</button>
-            `;
-            document.body.appendChild(bookmarkBar);
+        bookmarkMenu =
+            document.getElementById('bookmark-menu');
+
+        bookmarkOverlay =
+            document.getElementById('bookmark-overlay');
+
+        bookmarkTitle =
+            document.getElementById('bookmark-title');
+
+        bookmarkButton =
+            document.getElementById('btn-add-bookmark');
+
+        bookmarkButtonText =
+            document.getElementById('bookmark-btn-text');
+
+        footnoteModal =
+            document.getElementById('footnote-modal');
+
+        footnoteTitle =
+            document.getElementById('footnote-title');
+
+        footnoteText =
+            document.getElementById('footnote-text');
+
+        footnoteClose =
+            document.getElementById('footnote-close');
+
+        if (
+            !bookmarkMenu
+            || !bookmarkOverlay
+            || !bookmarkButton
+        ) {
+            console.warn(
+                'UI закладок не найден в index.html'
+            );
+        }
+
+        if (
+            !footnoteModal
+            || !footnoteTitle
+            || !footnoteText
+            || !footnoteClose
+        ) {
+            console.warn(
+                'UI сносок не найден в index.html'
+            );
+        }
+
+        if (bookmarkOverlay) {
+            bookmarkOverlay.onclick =
+                closeBookmarkMenu;
+        }
+
+        if (bookmarkButton) {
+            bookmarkButton.onclick =
+                savePendingBookmark;
+        }
+
+        if (footnoteClose) {
+            footnoteClose.onclick =
+                closeFootnoteModal;
+        }
+
+        if (footnoteModal) {
+            footnoteModal.onclick =
+                function (e) {
+                    if (e.target === footnoteModal) {
+                        closeFootnoteModal();
+                    }
+                };
         }
     }
 
     function showFootnoteModal(title, text) {
-        var overlay = document.createElement('div');
-        overlay.className = 'footnote-overlay';
-        var card = document.createElement('div');
-        card.className = 'footnote-card';
-        
-        var titleEl = document.createElement('div');
-        titleEl.className = 'footnote-title';
-        titleEl.textContent = title;
-        
-        var bodyEl = document.createElement('div');
-        bodyEl.className = 'footnote-body';
-        bodyEl.textContent = text;
-        
-        var closeBtn = document.createElement('button');
-        closeBtn.className = 'btn footnote-close';
-        closeBtn.textContent = 'Закрыть';
-        
-        card.appendChild(titleEl);
-        card.appendChild(bodyEl);
-        card.appendChild(closeBtn);
-        overlay.appendChild(card);
-        
-        document.body.appendChild(overlay);
-        
-        function close() {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (
+            !footnoteModal
+            || !footnoteTitle
+            || !footnoteText
+        ) {
+            return;
         }
-        
-        closeBtn.addEventListener('click', close);
-        overlay.addEventListener('click', function(e) {
-            if (e.target === overlay) close();
-        });
+
+        footnoteTitle.textContent = title;
+        footnoteText.textContent = text;
+
+        footnoteModal.classList.add('open');
+
+        footnoteModal.setAttribute(
+            'aria-hidden',
+            'false'
+        );
+    }
+
+    function closeFootnoteModal() {
+        if (!footnoteModal) return;
+
+        footnoteModal.classList.remove('open');
+
+        footnoteModal.setAttribute(
+            'aria-hidden',
+            'true'
+        );
     }
 
     function processFootnotes() {
@@ -610,91 +712,247 @@
     }
 
     function setupBookmarks() {
-        var paras = $content.querySelectorAll('p');
-        var currentSlug = chapterSlug || chapterUrl;
-        
-        paras.forEach(function(p, index) {
+        var paras =
+            $content.querySelectorAll('p');
+
+        var currentSlug =
+            chapterSlug || chapterUrl;
+
+        paras.forEach(function (p, index) {
             var pNum = index + 1;
+
             p.dataset.paraIdx = pNum;
             p.id = 'para-' + pNum;
-            
+
             function startPress(e) {
-                if (e.target.closest('.footnote-ref')) return;
+                if (
+                    e.target
+                    && e.target.closest
+                    && e.target.closest('.footnote-ref')
+                ) {
+                    return;
+                }
+
                 clearTimeout(longPressTimer);
-                longPressTimer = setTimeout(function() {
-                    showBookmarkBar(pNum, currentSlug);
-                }, 600); // 600мс для вызова меню закладки
+
+                p.classList.add(
+                    'active-paragraph'
+                );
+
+                longPressTimer =
+                    setTimeout(function () {
+                        p.classList.remove(
+                            'active-paragraph'
+                        );
+
+                        showBookmarkMenu(
+                            pNum,
+                            currentSlug,
+                            p
+                        );
+                    }, 600);
             }
-            
+
             function cancelPress() {
                 clearTimeout(longPressTimer);
+
+                p.classList.remove(
+                    'active-paragraph'
+                );
             }
 
-            p.addEventListener('touchstart', startPress, {passive: true});
-            p.addEventListener('touchend', cancelPress);
-            p.addEventListener('touchmove', cancelPress);
-            p.addEventListener('mousedown', startPress);
-            p.addEventListener('mouseup', cancelPress);
-            p.addEventListener('mouseleave', cancelPress);
-        });
-        
-        // Клик мимо скрывает плашку
-        document.addEventListener('click', function(e) {
-            if (bookmarkBar && !bookmarkBar.contains(e.target) && !e.target.closest('p')) {
-                bookmarkBar.hidden = true;
-            }
+            p.addEventListener(
+                'touchstart',
+                startPress,
+                { passive: true }
+            );
+
+            p.addEventListener(
+                'touchend',
+                cancelPress
+            );
+
+            p.addEventListener(
+                'touchmove',
+                cancelPress
+            );
+
+            p.addEventListener(
+                'touchcancel',
+                cancelPress
+            );
+
+            p.addEventListener(
+                'mousedown',
+                startPress
+            );
+
+            p.addEventListener(
+                'mouseup',
+                cancelPress
+            );
+
+            p.addEventListener(
+                'mouseleave',
+                cancelPress
+            );
         });
 
-        // Загрузка сохранённой закладки
+        // Восстанавливаем сохранённую закладку
         if (currentSlug) {
-            var savedPara = localStorage.getItem('manga_bookmark_' + currentSlug);
+            var savedPara =
+                localStorage.getItem(
+                    'manga_bookmark_' + currentSlug
+                );
+
             if (savedPara) {
-                setTimeout(function() {
-                    var target = document.getElementById('para-' + savedPara);
-                    if (target) {
-                        target.scrollIntoView({behavior: 'smooth', block: 'center'});
-                    }
-                }, 300);
+                var target =
+                    document.getElementById(
+                        'para-' + savedPara
+                    );
+
+                if (target) {
+                    target.classList.add(
+                        'bookmarked'
+                    );
+
+                    setTimeout(function () {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }, 300);
+                }
             }
         }
     }
 
-    function showBookmarkBar(pNum, slug) {
-        if (!bookmarkBar) return;
-        var label = bookmarkBar.querySelector('#bookmark-label');
-        var btn = bookmarkBar.querySelector('#bookmark-save-btn');
-        
-        label.textContent = 'Параграф ' + pNum;
-        bookmarkBar.hidden = false;
-        
-        var newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-        
-        newBtn.addEventListener('click', function() {
-            if (slug) {
-                localStorage.setItem('manga_bookmark_' + slug, pNum);
-                var originalText = newBtn.textContent;
-                newBtn.textContent = '✅ Сохранено!';
-                newBtn.style.background = '#4CAF50';
-                setTimeout(function() {
-                    bookmarkBar.hidden = true;
-                    newBtn.textContent = originalText;
-                    newBtn.style.background = '';
-                }, 1500);
-            }
-        });
+    function showBookmarkMenu(
+        pNum,
+        slug,
+        paragraph
+    ) {
+        if (
+            !bookmarkMenu
+            || !bookmarkOverlay
+        ) {
+            return;
+        }
+
+        pendingBookmark = {
+            pNum: pNum,
+            slug: slug,
+            paragraph: paragraph
+        };
+
+        if (bookmarkTitle) {
+            bookmarkTitle.textContent =
+                'Параграф ' + pNum;
+        }
+
+        if (bookmarkButtonText) {
+            bookmarkButtonText.textContent =
+                'Сохранить закладку';
+        }
+
+        bookmarkMenu.classList.add('open');
+        bookmarkOverlay.classList.add('open');
+    }
+
+    function closeBookmarkMenu() {
+        if (bookmarkMenu) {
+            bookmarkMenu.classList.remove(
+                'open'
+            );
+        }
+
+        if (bookmarkOverlay) {
+            bookmarkOverlay.classList.remove(
+                'open'
+            );
+        }
+
+        pendingBookmark = null;
+    }
+
+    function savePendingBookmark(e) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        if (
+            !pendingBookmark
+            || !pendingBookmark.slug
+        ) {
+            closeBookmarkMenu();
+            return;
+        }
+
+        var key =
+            'manga_bookmark_'
+            + pendingBookmark.slug;
+
+        localStorage.setItem(
+            key,
+            String(pendingBookmark.pNum)
+        );
+
+        // Убираем старое визуальное выделение
+        var previous =
+            $content.querySelector(
+                'p.bookmarked'
+            );
+
+        if (previous) {
+            previous.classList.remove(
+                'bookmarked'
+            );
+        }
+
+        // Подсвечиваем новую закладку
+        if (pendingBookmark.paragraph) {
+            pendingBookmark.paragraph
+                .classList.add('bookmarked');
+        }
+
+        if (bookmarkButtonText) {
+            bookmarkButtonText.textContent =
+                '✅ Сохранено';
+        }
+
+        setTimeout(function () {
+            closeBookmarkMenu();
+        }, 500);
     }
 
     function setupCopyProtection() {
-        $content.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-        });
-        $content.addEventListener('dragstart', function(e) {
-            e.preventDefault();
-        });
-        document.addEventListener('copy', function(e) {
-            e.preventDefault();
-        });
+        if (copyProtectionReady) {
+            return;
+        }
+
+        copyProtectionReady = true;
+
+        $content.addEventListener(
+            'contextmenu',
+            function (e) {
+                e.preventDefault();
+            }
+        );
+
+        $content.addEventListener(
+            'dragstart',
+            function (e) {
+                e.preventDefault();
+            }
+        );
+
+        document.addEventListener(
+            'copy',
+            function (e) {
+                e.preventDefault();
+            }
+        );
     }
 
     function postProcessContent() {
@@ -737,6 +995,11 @@
                     throw new Error('Неизвестный источник');
                 }
             }
+
+            // Контент уже загружен и отрисован.
+            // Теперь включаем сноски, закладки и защиту.
+            postProcessContent();
+
         } catch (err) {
             console.error('Ошибка загрузки:', err);
             showError(
