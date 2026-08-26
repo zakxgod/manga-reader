@@ -75,6 +75,56 @@
     const $retryBtn = document.getElementById('retry-btn');
     const $openBtn = document.getElementById('open-external-btn');
 
+    const $readerSettingsButton =
+        document.getElementById(
+            'reader-settings-button'
+        );
+
+    const $readerSettingsOverlay =
+        document.getElementById(
+            'reader-settings-overlay'
+        );
+
+    const $readerSettingsMenu =
+        document.getElementById(
+            'reader-settings-menu'
+        );
+
+    const $readerFont =
+        document.getElementById(
+            'reader-font'
+        );
+
+    const $readerFontSize =
+        document.getElementById(
+            'reader-font-size'
+        );
+
+    const $readerFontSizeValue =
+        document.getElementById(
+            'reader-font-size-value'
+        );
+
+    const $readerLineHeight =
+        document.getElementById(
+            'reader-line-height'
+        );
+
+    const $readerLineHeightValue =
+        document.getElementById(
+            'reader-line-height-value'
+        );
+
+    const $readerIndent =
+        document.getElementById(
+            'reader-indent'
+        );
+
+    const $readerThemeButtons =
+        document.querySelectorAll(
+            '.reader-theme-button'
+        );
+
     // ==================== Telegram WebApp ====================
 
     let tg = null;
@@ -94,6 +144,685 @@
     } catch (e) {
         console.warn('Telegram WebApp SDK недоступен:', e);
     }
+
+    // ==================== Настройки чтения ====================
+
+    const READER_SETTINGS_KEY =
+        'manga_reader_settings_v1';
+
+    const READER_FONT_MAP = {
+        system: '',
+        georgia:
+            'Georgia, "Times New Roman", serif',
+        times:
+            '"Times New Roman", Times, serif',
+        arial:
+            'Arial, Helvetica, sans-serif'
+    };
+
+    const READER_THEMES = {
+        light: {
+            '--tg-theme-bg-color': '#ffffff',
+            '--tg-theme-secondary-bg-color': '#f2f3f5',
+            '--tg-theme-text-color': '#1d1d1f',
+            '--tg-theme-hint-color': '#7b8088',
+            '--tg-theme-link-color': '#2678d9',
+            '--tg-theme-button-color': '#2678d9',
+            '--tg-theme-button-text-color': '#ffffff',
+
+            '--bg': '#ffffff',
+            '--secondary-bg': '#f2f3f5',
+            '--text': '#1d1d1f',
+            '--link': '#2678d9'
+        },
+
+        dark: {
+            '--tg-theme-bg-color': '#111318',
+            '--tg-theme-secondary-bg-color': '#1d2027',
+            '--tg-theme-text-color': '#e8eaed',
+            '--tg-theme-hint-color': '#8c929b',
+            '--tg-theme-link-color': '#63a8ff',
+            '--tg-theme-button-color': '#2d7ff9',
+            '--tg-theme-button-text-color': '#ffffff',
+
+            '--bg': '#111318',
+            '--secondary-bg': '#1d2027',
+            '--text': '#e8eaed',
+            '--link': '#63a8ff'
+        },
+
+        sepia: {
+            '--tg-theme-bg-color': '#f4ecd8',
+            '--tg-theme-secondary-bg-color': '#e9dec4',
+            '--tg-theme-text-color': '#3b3226',
+            '--tg-theme-hint-color': '#887966',
+            '--tg-theme-link-color': '#8b5a2b',
+            '--tg-theme-button-color': '#8b5a2b',
+            '--tg-theme-button-text-color': '#ffffff',
+
+            '--bg': '#f4ecd8',
+            '--secondary-bg': '#e9dec4',
+            '--text': '#3b3226',
+            '--link': '#8b5a2b'
+        }
+    };
+
+    let readerSettings = {};
+
+
+    function readReaderSettings() {
+        try {
+            var raw =
+                localStorage.getItem(
+                    READER_SETTINGS_KEY
+                );
+
+            if (!raw) {
+                return {};
+            }
+
+            var parsed = JSON.parse(raw);
+
+            if (
+                !parsed
+                || typeof parsed !== 'object'
+                || Array.isArray(parsed)
+            ) {
+                return {};
+            }
+
+            return parsed;
+
+        } catch (e) {
+            console.warn(
+                'Не удалось прочитать настройки:',
+                e
+            );
+
+            return {};
+        }
+    }
+
+
+    function saveReaderSettings() {
+        try {
+            localStorage.setItem(
+                READER_SETTINGS_KEY,
+                JSON.stringify(readerSettings)
+            );
+        } catch (e) {
+            console.warn(
+                'Не удалось сохранить настройки:',
+                e
+            );
+        }
+    }
+
+
+    function setReaderSetting(
+        key,
+        value
+    ) {
+        readerSettings[key] = value;
+
+        saveReaderSettings();
+    }
+
+
+    function getCurrentReaderFontSize() {
+        if (!$content) {
+            return 17;
+        }
+
+        var value = parseFloat(
+            getComputedStyle(
+                $content
+            ).fontSize
+        );
+
+        if (
+            !Number.isFinite(value)
+            || value <= 0
+        ) {
+            return 17;
+        }
+
+        return Math.round(value);
+    }
+
+
+    function getCurrentReaderLineHeight() {
+        if (!$content) {
+            return 1.7;
+        }
+
+        var style =
+            getComputedStyle($content);
+
+        var fontSize =
+            parseFloat(style.fontSize);
+
+        var lineHeight =
+            parseFloat(style.lineHeight);
+
+        if (
+            Number.isFinite(lineHeight)
+            && Number.isFinite(fontSize)
+            && fontSize > 0
+        ) {
+            var relative =
+                lineHeight / fontSize;
+
+            return Math.min(
+                2.2,
+                Math.max(
+                    1.3,
+                    Math.round(
+                        relative * 10
+                    ) / 10
+                )
+            );
+        }
+
+        return 1.7;
+    }
+
+
+    function getCurrentThemeForControls() {
+        if (
+            readerSettings.theme
+            && READER_THEMES[
+                readerSettings.theme
+            ]
+        ) {
+            return readerSettings.theme;
+        }
+
+        if (
+            tg
+            && tg.colorScheme === 'light'
+        ) {
+            return 'light';
+        }
+
+        return 'dark';
+    }
+
+
+    function applyReaderFont(fontKey) {
+        if (
+            !READER_FONT_MAP.hasOwnProperty(
+                fontKey
+            )
+        ) {
+            return;
+        }
+
+        var fontValue =
+            READER_FONT_MAP[fontKey];
+
+        if ($content) {
+            $content.style.fontFamily =
+                fontValue;
+        }
+
+        if ($title) {
+            $title.style.fontFamily =
+                fontValue;
+        }
+    }
+
+
+    function applyReaderFontSize(value) {
+        var size = Number(value);
+
+        if (
+            !Number.isFinite(size)
+            || size < 14
+            || size > 28
+        ) {
+            return;
+        }
+
+        if ($content) {
+            $content.style.fontSize =
+                size + 'px';
+        }
+    }
+
+
+    function applyReaderLineHeight(value) {
+        var lineHeight = Number(value);
+
+        if (
+            !Number.isFinite(lineHeight)
+            || lineHeight < 1.3
+            || lineHeight > 2.2
+        ) {
+            return;
+        }
+
+        if ($content) {
+            $content.style.lineHeight =
+                String(lineHeight);
+        }
+    }
+
+
+    function applyReaderIndent(enabled) {
+        if (!$content) {
+            return;
+        }
+
+        $content.classList.toggle(
+            'reader-indent',
+            enabled === true
+        );
+    }
+
+
+    function applyReaderTheme(themeName) {
+        var palette =
+            READER_THEMES[themeName];
+
+        if (!palette) {
+            return;
+        }
+
+        var root =
+            document.documentElement;
+
+        Object.keys(
+            palette
+        ).forEach(function (name) {
+            root.style.setProperty(
+                name,
+                palette[name]
+            );
+        });
+
+        root.dataset.readerTheme =
+            themeName;
+
+        root.style.colorScheme =
+            themeName === 'dark'
+                ? 'dark'
+                : 'light';
+
+        document.body.style.backgroundColor =
+            palette[
+                '--tg-theme-bg-color'
+            ];
+
+        document.body.style.color =
+            palette[
+                '--tg-theme-text-color'
+            ];
+
+        updateThemeButtons(
+            themeName
+        );
+    }
+
+
+    function updateThemeButtons(
+        selectedTheme
+    ) {
+        $readerThemeButtons.forEach(
+            function (button) {
+                button.classList.toggle(
+                    'active',
+                    button.dataset.readerTheme
+                        === selectedTheme
+                );
+            }
+        );
+    }
+
+
+    function syncReaderSettingsControls() {
+        if ($readerFont) {
+            $readerFont.value =
+                readerSettings.font
+                || 'system';
+        }
+
+        var fontSize =
+            readerSettings.fontSize
+            || getCurrentReaderFontSize();
+
+        if ($readerFontSize) {
+            $readerFontSize.value =
+                String(fontSize);
+        }
+
+        if ($readerFontSizeValue) {
+            $readerFontSizeValue.textContent =
+                fontSize + ' px';
+        }
+
+        var lineHeight =
+            readerSettings.lineHeight
+            || getCurrentReaderLineHeight();
+
+        if ($readerLineHeight) {
+            $readerLineHeight.value =
+                String(lineHeight);
+        }
+
+        if ($readerLineHeightValue) {
+            $readerLineHeightValue.textContent =
+                Number(
+                    lineHeight
+                ).toFixed(1);
+        }
+
+        if ($readerIndent) {
+            $readerIndent.checked =
+                readerSettings.indent === true;
+        }
+
+        updateThemeButtons(
+            getCurrentThemeForControls()
+        );
+    }
+
+
+    function applyStoredReaderSettings() {
+        /*
+            КРИТИЧЕСКИ ВАЖНО:
+
+            Применяем ТОЛЬКО реально сохранённые свойства.
+
+            Если настройки нет в localStorage,
+            текущий внешний вид не переопределяем.
+        */
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'font'
+            )
+        ) {
+            applyReaderFont(
+                readerSettings.font
+            );
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'fontSize'
+            )
+        ) {
+            applyReaderFontSize(
+                readerSettings.fontSize
+            );
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'lineHeight'
+            )
+        ) {
+            applyReaderLineHeight(
+                readerSettings.lineHeight
+            );
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'indent'
+            )
+        ) {
+            applyReaderIndent(
+                readerSettings.indent
+            );
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'theme'
+            )
+            && READER_THEMES[
+                readerSettings.theme
+            ]
+        ) {
+            applyReaderTheme(
+                readerSettings.theme
+            );
+        }
+    }
+
+
+    function openReaderSettings() {
+        if (
+            !$readerSettingsMenu
+            || !$readerSettingsOverlay
+        ) {
+            return;
+        }
+
+        syncReaderSettingsControls();
+
+        $readerSettingsMenu
+            .classList.add('open');
+
+        $readerSettingsOverlay
+            .classList.add('open');
+
+        $readerSettingsMenu
+            .setAttribute(
+                'aria-hidden',
+                'false'
+            );
+    }
+
+
+    function closeReaderSettings() {
+        if ($readerSettingsMenu) {
+            $readerSettingsMenu
+                .classList.remove('open');
+
+            $readerSettingsMenu
+                .setAttribute(
+                    'aria-hidden',
+                    'true'
+                );
+        }
+
+        if ($readerSettingsOverlay) {
+            $readerSettingsOverlay
+                .classList.remove('open');
+        }
+    }
+
+
+    function initReaderSettings() {
+        readerSettings =
+            readReaderSettings();
+
+        applyStoredReaderSettings();
+
+        syncReaderSettingsControls();
+
+
+        if ($readerSettingsButton) {
+            $readerSettingsButton
+                .addEventListener(
+                    'click',
+                    function () {
+                        if (
+                            $readerSettingsMenu
+                            && $readerSettingsMenu
+                                .classList
+                                .contains('open')
+                        ) {
+                            closeReaderSettings();
+                        } else {
+                            openReaderSettings();
+                        }
+                    }
+                );
+        }
+
+
+        if ($readerSettingsOverlay) {
+            $readerSettingsOverlay
+                .addEventListener(
+                    'click',
+                    closeReaderSettings
+                );
+        }
+
+
+        if ($readerFont) {
+            $readerFont.addEventListener(
+                'change',
+                function () {
+                    var value =
+                        $readerFont.value;
+
+                    setReaderSetting(
+                        'font',
+                        value
+                    );
+
+                    applyReaderFont(
+                        value
+                    );
+                }
+            );
+        }
+
+
+        if ($readerFontSize) {
+            $readerFontSize.addEventListener(
+                'input',
+                function () {
+                    var value =
+                        Number(
+                            $readerFontSize.value
+                        );
+
+                    if (
+                        $readerFontSizeValue
+                    ) {
+                        $readerFontSizeValue
+                            .textContent =
+                            value + ' px';
+                    }
+
+                    setReaderSetting(
+                        'fontSize',
+                        value
+                    );
+
+                    applyReaderFontSize(
+                        value
+                    );
+                }
+            );
+        }
+
+
+        if ($readerLineHeight) {
+            $readerLineHeight.addEventListener(
+                'input',
+                function () {
+                    var value =
+                        Number(
+                            $readerLineHeight.value
+                        );
+
+                    if (
+                        $readerLineHeightValue
+                    ) {
+                        $readerLineHeightValue
+                            .textContent =
+                            value.toFixed(1);
+                    }
+
+                    setReaderSetting(
+                        'lineHeight',
+                        value
+                    );
+
+                    applyReaderLineHeight(
+                        value
+                    );
+                }
+            );
+        }
+
+
+        if ($readerIndent) {
+            $readerIndent.addEventListener(
+                'change',
+                function () {
+                    var value =
+                        $readerIndent.checked;
+
+                    setReaderSetting(
+                        'indent',
+                        value
+                    );
+
+                    applyReaderIndent(
+                        value
+                    );
+                }
+            );
+        }
+
+
+        $readerThemeButtons.forEach(
+            function (button) {
+                button.addEventListener(
+                    'click',
+                    function () {
+                        var theme =
+                            button.dataset
+                                .readerTheme;
+
+                        if (
+                            !READER_THEMES[
+                                theme
+                            ]
+                        ) {
+                            return;
+                        }
+
+                        setReaderSetting(
+                            'theme',
+                            theme
+                        );
+
+                        applyReaderTheme(
+                            theme
+                        );
+                    }
+                );
+            }
+        );
+
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+                if (
+                    event.key === 'Escape'
+                ) {
+                    closeReaderSettings();
+                }
+            }
+        );
+    }
+
+    initReaderSettings();
 
     // ==================== Получение параметров ====================
 
@@ -150,6 +879,12 @@
         $loader.hidden = false;
         $reader.hidden = true;
         $error.hidden = true;
+
+        if ($readerSettingsButton) {
+            $readerSettingsButton.hidden = true;
+        }
+
+        closeReaderSettings();
     }
 
     function showContent(title) {
@@ -157,6 +892,10 @@
         $reader.hidden = false;
         $error.hidden = true;
         if (title) $title.textContent = title;
+
+        if ($readerSettingsButton) {
+            $readerSettingsButton.hidden = false;
+        }
     }
 
     function showError(title, message) {
@@ -165,6 +904,12 @@
         $error.hidden = false;
         $errorTitle.textContent = title || 'Ошибка';
         $errorMsg.textContent = message || '';
+
+        if ($readerSettingsButton) {
+            $readerSettingsButton.hidden = true;
+        }
+
+        closeReaderSettings();
     }
 
     // ==================== Telegraph: рендеринг контента ====================
