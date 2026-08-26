@@ -12,7 +12,7 @@
                    frame-src 'none';">
     <title>📖 Читалка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css?v=8">
+    <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
     <!-- Загрузка -->
@@ -24,6 +24,18 @@
     <!-- Контент главы -->
     <article id="reader" hidden>
         <h1 id="chapter-title"></h1>
+        <div class="reader-settings-row">
+            <button
+                id="reader-settings-button"
+                class="reader-settings-button"
+                type="button"
+                aria-label="Настройки чтения"
+                title="Настройки чтения"
+                hidden
+            >
+                Aa
+            </button>
+        </div>
         <div id="chapter-content"></div>
     </article>
 
@@ -94,17 +106,6 @@
     </div>
 
     <!-- ==================== Настройки чтения ==================== -->
-    <button
-        id="reader-settings-button"
-        class="reader-settings-button"
-        type="button"
-        aria-label="Настройки чтения"
-        title="Настройки чтения"
-        hidden
-    >
-        Aa
-    </button>
-
     <div id="reader-settings-overlay"></div>
 
     <div
