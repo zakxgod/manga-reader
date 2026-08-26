@@ -603,61 +603,131 @@
     }
 
 
-    let readerSettingsScrollY = 0;
-
+    let readerSettingsSavedScrollY = 0;
+    let readerSettingsScrollLocked = false;
 
     function lockReaderSettingsScroll() {
-        readerSettingsScrollY =
+        if (readerSettingsScrollLocked) {
+            return;
+        }
+
+        readerSettingsSavedScrollY =
             window.scrollY
             || window.pageYOffset
             || 0;
 
+        document.body.style.position = 'fixed';
         document.body.style.top =
-            '-' + readerSettingsScrollY + 'px';
+            '-' + readerSettingsSavedScrollY + 'px';
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
 
-        document.body.classList.add(
-            'reader-settings-open'
-        );
+        document.documentElement
+            .classList
+            .add('reader-settings-open');
+
+        document.body
+            .classList
+            .add('reader-settings-open');
+
+        readerSettingsScrollLocked = true;
     }
-
 
     function unlockReaderSettingsScroll() {
-        document.body.classList.remove(
-            'reader-settings-open'
-        );
-
-        document.body.style.top = '';
-
-        window.scrollTo(
-            0,
-            readerSettingsScrollY
-        );
-    }
-
-
-    let readerSettingsDragStartY = 0;
-    let readerSettingsDragY = 0;
-    let readerSettingsDragging = false;
-
-
-    function resetReaderSettingsDrag() {
-        if (!$readerSettingsMenu) {
+        if (!readerSettingsScrollLocked) {
             return;
         }
 
-        $readerSettingsMenu
+        document.documentElement
             .classList
-            .remove('dragging');
+            .remove('reader-settings-open');
 
-        $readerSettingsMenu.style.transform = '';
-        $readerSettingsMenu.style.transition = '';
+        document.body
+            .classList
+            .remove('reader-settings-open');
+
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+
+        window.scrollTo(
+            0,
+            readerSettingsSavedScrollY
+        );
+
+        readerSettingsScrollLocked = false;
+    }
+
+
+    function preventReaderBackgroundScroll(event) {
+        if (
+            !$readerSettingsMenu
+            || !$readerSettingsMenu
+                .classList
+                .contains('open')
+        ) {
+            return;
+        }
+
+        /*
+            Если событие происходит ВНУТРИ панели —
+            не блокируем, чтобы сама панель могла скроллиться.
+        */
+        if (
+            $readerSettingsMenu
+                .contains(event.target)
+        ) {
+            return;
+        }
+
+        event.preventDefault();
+    }
+
+    document.addEventListener(
+        'touchmove',
+        preventReaderBackgroundScroll,
+        {
+            passive: false
+        }
+    );
+
+    document.addEventListener(
+        'wheel',
+        preventReaderBackgroundScroll,
+        {
+            passive: false
+        }
+    );
+
+
+    let readerSettingsPointerId = null;
+    let readerSettingsPointerStartY = 0;
+    let readerSettingsPointerDeltaY = 0;
+    let readerSettingsPointerDragging = false;
+
+    function resetReaderSettingsDrag() {
+        readerSettingsPointerId = null;
+        readerSettingsPointerStartY = 0;
+        readerSettingsPointerDeltaY = 0;
+        readerSettingsPointerDragging = false;
+
+        if ($readerSettingsMenu) {
+            $readerSettingsMenu
+                .classList
+                .remove('dragging');
+
+            $readerSettingsMenu.style.transform = '';
+            $readerSettingsMenu.style.transition = '';
+        }
 
         if ($readerSettingsOverlay) {
             $readerSettingsOverlay.style.opacity = '';
         }
-
-        readerSettingsDragging = false;
-        readerSettingsDragY = 0;
     }
 
 
@@ -669,52 +739,63 @@
             return;
         }
 
-        if (!$readerSettingsMenu.classList.contains('open')) {
-            lockReaderSettingsScroll();
+        if (
+            $readerSettingsMenu
+                .classList
+                .contains('open')
+        ) {
+            return;
         }
 
         syncReaderSettingsControls();
 
         $readerSettingsMenu
-            .classList.add('open');
+            .classList
+            .add('open');
 
         $readerSettingsOverlay
-            .classList.add('open');
+            .classList
+            .add('open');
 
         $readerSettingsMenu
             .setAttribute(
                 'aria-hidden',
                 'false'
             );
+
+        lockReaderSettingsScroll();
     }
 
 
     function closeReaderSettings() {
+        if (
+            !$readerSettingsMenu
+            || !$readerSettingsMenu
+                .classList
+                .contains('open')
+        ) {
+            return;
+        }
+
         resetReaderSettingsDrag();
 
-        let wasOpen = false;
+        $readerSettingsMenu
+            .classList
+            .remove('open');
 
-        if ($readerSettingsMenu) {
-            wasOpen = $readerSettingsMenu.classList.contains('open');
-
-            $readerSettingsMenu
-                .classList.remove('open');
-
-            $readerSettingsMenu
-                .setAttribute(
-                    'aria-hidden',
-                    'true'
-                );
-        }
+        $readerSettingsMenu
+            .setAttribute(
+                'aria-hidden',
+                'true'
+            );
 
         if ($readerSettingsOverlay) {
             $readerSettingsOverlay
-                .classList.remove('open');
+                .classList
+                .remove('open');
         }
 
-        if (wasOpen) {
-            unlockReaderSettingsScroll();
-        }
+        unlockReaderSettingsScroll();
     }
 
 
@@ -757,11 +838,9 @@
 
 
         if ($readerSettingsHandle) {
-
             $readerSettingsHandle.addEventListener(
-                'touchstart',
+                'pointerdown',
                 function (event) {
-
                     if (
                         !$readerSettingsMenu
                         || !$readerSettingsMenu
@@ -771,153 +850,202 @@
                         return;
                     }
 
-                    if (!event.touches.length) {
-                        return;
-                    }
-
-                    readerSettingsDragStartY =
-                        event.touches[0].clientY;
-
-                    readerSettingsDragY = 0;
-                    readerSettingsDragging = true;
-
-                    $readerSettingsMenu
-                        .classList
-                        .add('dragging');
-                },
-                {
-                    passive: true
-                }
-            );
-
-
-            $readerSettingsHandle.addEventListener(
-                'touchmove',
-                function (event) {
-
+                    /*
+                        Только primary pointer.
+                    */
                     if (
-                        !readerSettingsDragging
-                        || !event.touches.length
+                        event.isPrimary === false
                     ) {
                         return;
                     }
 
-                    var currentY =
-                        event.touches[0].clientY;
+                    readerSettingsPointerId =
+                        event.pointerId;
+
+                    readerSettingsPointerStartY =
+                        event.clientY;
+
+                    readerSettingsPointerDeltaY = 0;
+                    readerSettingsPointerDragging = true;
+
+                    $readerSettingsMenu
+                        .classList
+                        .add('dragging');
+
+                    try {
+                        $readerSettingsHandle
+                            .setPointerCapture(
+                                event.pointerId
+                            );
+                    } catch (e) {
+                        // Не критично.
+                    }
+
+                    event.preventDefault();
+                }
+            );
+
+            $readerSettingsHandle.addEventListener(
+                'pointermove',
+                function (event) {
+                    if (
+                        !readerSettingsPointerDragging
+                        || event.pointerId
+                            !== readerSettingsPointerId
+                    ) {
+                        return;
+                    }
 
                     var deltaY =
-                        currentY
-                        - readerSettingsDragStartY;
+                        event.clientY
+                        - readerSettingsPointerStartY;
 
                     /*
-                        Разрешаем только движение вниз.
-                        Вверх панель не тянуть.
+                        Вверх не тянем.
                     */
                     if (deltaY < 0) {
                         deltaY = 0;
                     }
 
-                    readerSettingsDragY =
+                    readerSettingsPointerDeltaY =
                         deltaY;
 
                     if ($readerSettingsMenu) {
                         $readerSettingsMenu
                             .style.transform =
-                            'translateY('
+                            'translate3d(0, '
                             + deltaY
-                            + 'px)';
+                            + 'px, 0)';
                     }
 
-                    /*
-                        Overlay постепенно исчезает.
-                    */
                     if ($readerSettingsOverlay) {
                         var progress =
                             Math.min(
-                                deltaY / 250,
+                                deltaY / 260,
                                 1
                             );
 
+                        /*
+                            У открытого overlay фактическая
+                            прозрачность задаётся CSS.
+                            Здесь уменьшаем её по мере drag.
+                        */
                         $readerSettingsOverlay
                             .style.opacity =
                             String(
-                                1 - progress
+                                Math.max(
+                                    0,
+                                    1 - progress
+                                )
                             );
                     }
 
-                    /*
-                        Не давать WebView интерпретировать
-                        этот жест как scroll страницы.
-                    */
                     event.preventDefault();
-                },
-                {
-                    passive: false
                 }
             );
 
 
-            $readerSettingsHandle.addEventListener(
-                'touchend',
-                function () {
+            function finishReaderSettingsPointerDrag(
+                shouldCancel
+            ) {
+                if (!readerSettingsPointerDragging) {
+                    return;
+                }
 
-                    if (!readerSettingsDragging) {
-                        return;
-                    }
+                var shouldClose =
+                    !shouldCancel
+                    && readerSettingsPointerDeltaY >= 90;
 
+                if (shouldClose) {
                     /*
-                        Порог закрытия.
+                        Сначала сбрасываем drag inline styles,
+                        потом закрываем обычным механизмом.
                     */
-                    if (
-                        readerSettingsDragY >= 90
-                    ) {
+                    resetReaderSettingsDrag();
+                    closeReaderSettings();
+                    return;
+                }
+
+                /*
+                    Если свайп недостаточный —
+                    плавно вернуть панель назад.
+                */
+                if ($readerSettingsMenu) {
+                    $readerSettingsMenu
+                        .classList
+                        .remove('dragging');
+
+                    $readerSettingsMenu
+                        .style.transition =
+                        'transform 0.2s ease';
+
+                    $readerSettingsMenu
+                        .style.transform =
+                        'translate3d(0, 0, 0)';
+                }
+
+                if ($readerSettingsOverlay) {
+                    $readerSettingsOverlay
+                        .style.transition =
+                        'opacity 0.2s ease';
+
+                    $readerSettingsOverlay
+                        .style.opacity = '';
+                }
+
+                window.setTimeout(
+                    function () {
+                        if ($readerSettingsOverlay) {
+                            $readerSettingsOverlay
+                                .style.transition = '';
+                        }
+
                         resetReaderSettingsDrag();
-                        closeReaderSettings();
+                    },
+                    210
+                );
+            }
+
+
+            $readerSettingsHandle.addEventListener(
+                'pointerup',
+                function (event) {
+                    if (
+                        event.pointerId
+                        !== readerSettingsPointerId
+                    ) {
                         return;
                     }
 
-                    /*
-                        Недостаточный свайп:
-                        вернуть панель назад.
-                    */
-                    if ($readerSettingsMenu) {
-                        $readerSettingsMenu
-                            .classList
-                            .remove('dragging');
-
-                        $readerSettingsMenu
-                            .style.transition =
-                            'transform 0.22s ease';
-
-                        $readerSettingsMenu
-                            .style.transform =
-                            'translateY(0)';
+                    try {
+                        $readerSettingsHandle
+                            .releasePointerCapture(
+                                event.pointerId
+                            );
+                    } catch (e) {
+                        // Не критично.
                     }
 
-                    if ($readerSettingsOverlay) {
-                        $readerSettingsOverlay
-                            .style.opacity = '';
-                    }
-
-                    window.setTimeout(
-                        function () {
-                            resetReaderSettingsDrag();
-                        },
-                        230
+                    finishReaderSettingsPointerDrag(
+                        false
                     );
                 }
             );
 
 
             $readerSettingsHandle.addEventListener(
-                'touchcancel',
-                function () {
-
-                    if (!readerSettingsDragging) {
+                'pointercancel',
+                function (event) {
+                    if (
+                        event.pointerId
+                        !== readerSettingsPointerId
+                    ) {
                         return;
                     }
 
-                    resetReaderSettingsDrag();
+                    finishReaderSettingsPointerDrag(
+                        true
+                    );
                 }
             );
         }

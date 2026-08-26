@@ -27,17 +27,9 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+html.reader-settings-open,
 body.reader-settings-open {
-    position: fixed;
-
-    left: 0;
-    right: 0;
-
-    width: 100%;
-
-    overflow: hidden;
-
-    touch-action: none;
+    overscroll-behavior: none;
 }
 
 /* ==================== Экран загрузки ==================== */
@@ -188,6 +180,7 @@ body.reader-settings-open {
     margin: 24px 0;
 }
 
+/* ==================== Код ==================== */
 #chapter-content pre {
     background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
     padding: 12px;
@@ -717,30 +710,28 @@ html {
 
 
 .reader-settings-handle {
+    position: relative;
+    width: 100px;
+    height: 28px;
+    margin: 0 auto 4px;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.reader-settings-handle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 12px;
     width: 38px;
     height: 4px;
-
-    margin: 2px auto 12px;
-
+    transform: translateX(-50%);
     border-radius: 999px;
-
-    background:
-        var(
-            --tg-theme-hint-color,
-            #888
-        );
-
+    background: var(--tg-theme-hint-color, #888);
     opacity: 0.45;
-
-    cursor: grab;
-
-    touch-action: none;
-
-    padding-top: 8px;
-    padding-bottom: 8px;
-
-    box-sizing: content-box;
-    background-clip: content-box;
 }
 
 #reader-settings-menu.dragging {
