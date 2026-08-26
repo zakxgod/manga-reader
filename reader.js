@@ -90,6 +90,11 @@
             'reader-settings-menu'
         );
 
+    const $readerSettingsHandle =
+        document.querySelector(
+            '.reader-settings-handle'
+        );
+
     const $readerFont =
         document.getElementById(
             'reader-font'
@@ -598,12 +603,74 @@
     }
 
 
+    let readerSettingsScrollY = 0;
+
+
+    function lockReaderSettingsScroll() {
+        readerSettingsScrollY =
+            window.scrollY
+            || window.pageYOffset
+            || 0;
+
+        document.body.style.top =
+            '-' + readerSettingsScrollY + 'px';
+
+        document.body.classList.add(
+            'reader-settings-open'
+        );
+    }
+
+
+    function unlockReaderSettingsScroll() {
+        document.body.classList.remove(
+            'reader-settings-open'
+        );
+
+        document.body.style.top = '';
+
+        window.scrollTo(
+            0,
+            readerSettingsScrollY
+        );
+    }
+
+
+    let readerSettingsDragStartY = 0;
+    let readerSettingsDragY = 0;
+    let readerSettingsDragging = false;
+
+
+    function resetReaderSettingsDrag() {
+        if (!$readerSettingsMenu) {
+            return;
+        }
+
+        $readerSettingsMenu
+            .classList
+            .remove('dragging');
+
+        $readerSettingsMenu.style.transform = '';
+        $readerSettingsMenu.style.transition = '';
+
+        if ($readerSettingsOverlay) {
+            $readerSettingsOverlay.style.opacity = '';
+        }
+
+        readerSettingsDragging = false;
+        readerSettingsDragY = 0;
+    }
+
+
     function openReaderSettings() {
         if (
             !$readerSettingsMenu
             || !$readerSettingsOverlay
         ) {
             return;
+        }
+
+        if (!$readerSettingsMenu.classList.contains('open')) {
+            lockReaderSettingsScroll();
         }
 
         syncReaderSettingsControls();
@@ -623,7 +690,13 @@
 
 
     function closeReaderSettings() {
+        resetReaderSettingsDrag();
+
+        let wasOpen = false;
+
         if ($readerSettingsMenu) {
+            wasOpen = $readerSettingsMenu.classList.contains('open');
+
             $readerSettingsMenu
                 .classList.remove('open');
 
@@ -637,6 +710,10 @@
         if ($readerSettingsOverlay) {
             $readerSettingsOverlay
                 .classList.remove('open');
+        }
+
+        if (wasOpen) {
+            unlockReaderSettingsScroll();
         }
     }
 
@@ -676,6 +753,173 @@
                     'click',
                     closeReaderSettings
                 );
+        }
+
+
+        if ($readerSettingsHandle) {
+
+            $readerSettingsHandle.addEventListener(
+                'touchstart',
+                function (event) {
+
+                    if (
+                        !$readerSettingsMenu
+                        || !$readerSettingsMenu
+                            .classList
+                            .contains('open')
+                    ) {
+                        return;
+                    }
+
+                    if (!event.touches.length) {
+                        return;
+                    }
+
+                    readerSettingsDragStartY =
+                        event.touches[0].clientY;
+
+                    readerSettingsDragY = 0;
+                    readerSettingsDragging = true;
+
+                    $readerSettingsMenu
+                        .classList
+                        .add('dragging');
+                },
+                {
+                    passive: true
+                }
+            );
+
+
+            $readerSettingsHandle.addEventListener(
+                'touchmove',
+                function (event) {
+
+                    if (
+                        !readerSettingsDragging
+                        || !event.touches.length
+                    ) {
+                        return;
+                    }
+
+                    var currentY =
+                        event.touches[0].clientY;
+
+                    var deltaY =
+                        currentY
+                        - readerSettingsDragStartY;
+
+                    /*
+                        Разрешаем только движение вниз.
+                        Вверх панель не тянуть.
+                    */
+                    if (deltaY < 0) {
+                        deltaY = 0;
+                    }
+
+                    readerSettingsDragY =
+                        deltaY;
+
+                    if ($readerSettingsMenu) {
+                        $readerSettingsMenu
+                            .style.transform =
+                            'translateY('
+                            + deltaY
+                            + 'px)';
+                    }
+
+                    /*
+                        Overlay постепенно исчезает.
+                    */
+                    if ($readerSettingsOverlay) {
+                        var progress =
+                            Math.min(
+                                deltaY / 250,
+                                1
+                            );
+
+                        $readerSettingsOverlay
+                            .style.opacity =
+                            String(
+                                1 - progress
+                            );
+                    }
+
+                    /*
+                        Не давать WebView интерпретировать
+                        этот жест как scroll страницы.
+                    */
+                    event.preventDefault();
+                },
+                {
+                    passive: false
+                }
+            );
+
+
+            $readerSettingsHandle.addEventListener(
+                'touchend',
+                function () {
+
+                    if (!readerSettingsDragging) {
+                        return;
+                    }
+
+                    /*
+                        Порог закрытия.
+                    */
+                    if (
+                        readerSettingsDragY >= 90
+                    ) {
+                        resetReaderSettingsDrag();
+                        closeReaderSettings();
+                        return;
+                    }
+
+                    /*
+                        Недостаточный свайп:
+                        вернуть панель назад.
+                    */
+                    if ($readerSettingsMenu) {
+                        $readerSettingsMenu
+                            .classList
+                            .remove('dragging');
+
+                        $readerSettingsMenu
+                            .style.transition =
+                            'transform 0.22s ease';
+
+                        $readerSettingsMenu
+                            .style.transform =
+                            'translateY(0)';
+                    }
+
+                    if ($readerSettingsOverlay) {
+                        $readerSettingsOverlay
+                            .style.opacity = '';
+                    }
+
+                    window.setTimeout(
+                        function () {
+                            resetReaderSettingsDrag();
+                        },
+                        230
+                    );
+                }
+            );
+
+
+            $readerSettingsHandle.addEventListener(
+                'touchcancel',
+                function () {
+
+                    if (!readerSettingsDragging) {
+                        return;
+                    }
+
+                    resetReaderSettingsDrag();
+                }
+            );
         }
 
 

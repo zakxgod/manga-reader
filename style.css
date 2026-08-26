@@ -27,6 +27,19 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+body.reader-settings-open {
+    position: fixed;
+
+    left: 0;
+    right: 0;
+
+    width: 100%;
+
+    overflow: hidden;
+
+    touch-action: none;
+}
+
 /* ==================== Экран загрузки ==================== */
 #loader {
     display: flex;
@@ -718,6 +731,22 @@ html {
         );
 
     opacity: 0.45;
+
+    cursor: grab;
+
+    touch-action: none;
+
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    box-sizing: content-box;
+    background-clip: content-box;
+}
+
+#reader-settings-menu.dragging {
+    transition: none !important;
+
+    will-change: transform;
 }
 
 
