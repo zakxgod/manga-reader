@@ -1,0 +1,1035 @@
+/* ==================== Базовые стили ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Фоллбэк-цвета (если открыто вне Telegram) */
+    --bg: #ffffff;
+    --text: #1a1a1a;
+    --hint: #999999;
+    --link: #2678b6;
+    --secondary-bg: #f0f0f0;
+    --border: #e0e0e0;
+}
+
+body {
+    /* Telegram WebApp SDK автоматически подставляет свои CSS-переменные */
+    background: var(--tg-theme-bg-color, var(--bg));
+    color: var(--tg-theme-text-color, var(--text));
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 17px;
+    line-height: 1.7;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body.reader-settings-open {
+    position: fixed;
+
+    left: 0;
+    right: 0;
+
+    width: 100%;
+
+    overflow: hidden;
+
+    touch-action: none;
+}
+
+/* ==================== Экран загрузки ==================== */
+#loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    gap: 16px;
+}
+
+#loader p {
+    color: var(--tg-theme-hint-color, var(--hint));
+    font-size: 15px;
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--tg-theme-hint-color, var(--hint));
+    border-top-color: var(--tg-theme-link-color, var(--link));
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== Контент главы ==================== */
+#reader {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 16px 16px 48px;
+}
+
+#chapter-title {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.reader-settings-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+
+    margin: -2px 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--tg-theme-hint-color, var(--border));
+}
+
+#chapter-content {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* ==================== Типографика контента ==================== */
+#chapter-content p {
+    margin-bottom: 12px;
+    position: relative;
+    cursor: pointer;
+
+    border-radius: 4px;
+
+    padding: 2px 4px;
+    margin-left: -4px;
+    margin-right: -4px;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease;
+}
+
+#chapter-content p:active,
+#chapter-content p.active-paragraph {
+    background-color:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+}
+
+/* Сохранённый абзац */
+#chapter-content p.bookmarked {
+    border-left: 3px solid
+        var(--tg-theme-link-color, var(--link));
+
+    padding-left: 8px;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(
+                --tg-theme-secondary-bg-color,
+                var(--secondary-bg)
+            ) 0%,
+            transparent 100%
+        );
+}
+
+#chapter-content h3,
+#chapter-content h4 {
+    margin: 24px 0 12px;
+    font-weight: 600;
+}
+
+#chapter-content h3 {
+    font-size: 19px;
+}
+
+#chapter-content h4 {
+    font-size: 17px;
+}
+
+#chapter-content em, 
+#chapter-content i {
+    font-style: italic;
+}
+
+#chapter-content strong, 
+#chapter-content b {
+    font-weight: 600;
+}
+
+#chapter-content blockquote {
+    margin: 16px 0;
+    padding: 10px 16px;
+    border-left: 3px solid var(--tg-theme-link-color, var(--link));
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+}
+
+#chapter-content a {
+    color: var(--tg-theme-link-color, var(--link));
+    text-decoration: none;
+}
+
+#chapter-content a:hover {
+    text-decoration: underline;
+}
+
+#chapter-content hr {
+    border: none;
+    border-top: 1px solid var(--tg-theme-hint-color, var(--border));
+    margin: 24px 0;
+}
+
+#chapter-content pre {
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    padding: 12px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 14px;
+    margin: 12px 0;
+}
+
+#chapter-content code {
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 15px;
+}
+
+/* ==================== Картинки ==================== */
+#chapter-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 16px auto;
+    border-radius: 8px;
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    /* Плейсхолдер пока грузится */
+    min-height: 50px;
+    transition: opacity 0.3s ease;
+}
+
+#chapter-content img.loading {
+    opacity: 0.4;
+}
+
+#chapter-content img.loaded {
+    opacity: 1;
+}
+
+#chapter-content figure {
+    margin: 16px 0;
+    text-align: center;
+}
+
+#chapter-content figcaption {
+    font-size: 14px;
+    color: var(--tg-theme-hint-color, var(--hint));
+    margin-top: 8px;
+}
+
+/* ==================== Iframe (видео и т.д.) ==================== */
+#chapter-content .iframe-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%; /* 16:9 */
+    margin: 16px 0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+}
+
+#chapter-content .iframe-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* ==================== Экран ошибки ==================== */
+#error-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 60vh;
+    padding: 24px;
+    text-align: center;
+    gap: 12px;
+}
+
+.error-icon {
+    font-size: 48px;
+}
+
+#error-screen h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+#error-screen p {
+    color: var(--tg-theme-hint-color, var(--hint));
+    font-size: 15px;
+    max-width: 300px;
+}
+
+/* ==================== Кнопки ==================== */
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    border-radius: 10px;
+    border: none;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 8px;
+    background: var(--tg-theme-button-color, var(--link));
+    color: var(--tg-theme-button-text-color, #ffffff);
+    transition: opacity 0.2s;
+}
+
+.btn:active {
+    opacity: 0.7;
+}
+
+.btn-secondary {
+    background: var(--tg-theme-secondary-bg-color, var(--secondary-bg));
+    color: var(--tg-theme-text-color, var(--text));
+}
+
+/* ==================== Скролл и утилиты ==================== */
+[hidden] {
+    display: none !important;
+}
+
+/* Плавная прокрутка */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Анимация появления контента */
+#reader {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Для очень длинных слов (японские названия и т.п.) */
+#chapter-content {
+    hyphens: auto;
+    -webkit-hyphens: auto;
+}
+
+/* ==================== Защита от копирования ==================== */
+#chapter-content {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+#chapter-content img {
+    -webkit-user-drag: none;
+    user-drag: none;
+    pointer-events: none;
+}
+
+/* ==================== Подчёркивание ==================== */
+#chapter-content u {
+    text-decoration: underline;
+}
+
+/* ==================== Сноски [N] ==================== */
+
+.footnote-ref {
+    color: var(--tg-theme-link-color, var(--link));
+    cursor: pointer;
+    font-weight: 600;
+
+    font-size: 0.82em;
+    vertical-align: super;
+
+    line-height: 0;
+
+    padding: 0 2px;
+
+    display: inline-block;
+
+    pointer-events: auto;
+
+    -webkit-user-select: none;
+    user-select: none;
+
+    -webkit-tap-highlight-color: transparent;
+}
+
+.footnote-ref:active {
+    opacity: 0.55;
+}
+
+/* ==================== Модальное окно сноски ==================== */
+
+#footnote-modal {
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.52);
+
+    z-index: 1100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 20px;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 0.2s ease;
+}
+
+#footnote-modal.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#footnote-modal .modal-content {
+    width: min(400px, 100%);
+
+    max-height: 75vh;
+    overflow-y: auto;
+
+    background:
+        var(--tg-theme-bg-color, var(--bg));
+
+    color:
+        var(--tg-theme-text-color, var(--text));
+
+    padding: 20px;
+
+    border-radius: 16px;
+
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.28);
+
+    transform:
+        translateY(8px) scale(0.96);
+
+    opacity: 0;
+
+    transition:
+        transform 0.2s ease,
+        opacity 0.2s ease;
+}
+
+#footnote-modal.open .modal-content {
+    transform:
+        translateY(0) scale(1);
+
+    opacity: 1;
+}
+
+#footnote-title {
+    margin-bottom: 12px;
+
+    color:
+        var(--tg-theme-link-color, var(--link));
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+#footnote-text {
+    font-size: 15px;
+    line-height: 1.6;
+
+    margin-bottom: 18px;
+
+    color:
+        var(--tg-theme-text-color, var(--text));
+}
+
+#footnote-close {
+    width: 100%;
+    text-align: center;
+}
+
+/* ==================== Нижнее меню закладки ==================== */
+
+#bookmark-menu {
+    position: fixed;
+
+    left: 0;
+    right: 0;
+
+    bottom: -100%;
+
+    width: 100%;
+
+    background:
+        var(--tg-theme-bg-color, var(--bg));
+
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
+
+    box-shadow:
+        0 -6px 24px rgba(0, 0, 0, 0.16);
+
+    padding: 16px;
+
+    padding-bottom:
+        max(
+            16px,
+            env(safe-area-inset-bottom)
+        );
+
+    z-index: 1001;
+
+    transition:
+        bottom 0.28s ease;
+}
+
+#bookmark-menu.open {
+    bottom: 0;
+}
+
+#bookmark-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    background:
+        rgba(0, 0, 0, 0.42);
+
+    z-index: 1000;
+
+    opacity: 0;
+
+    pointer-events: none;
+
+    transition:
+        opacity 0.28s ease;
+}
+
+#bookmark-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.bookmark-header {
+    text-align: center;
+
+    font-size: 15px;
+    font-weight: 600;
+
+    margin-bottom: 12px;
+
+    color:
+        var(--tg-theme-text-color, var(--text));
+}
+
+.bookmark-option {
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+    width: 100%;
+
+    padding: 14px 16px;
+
+    border-radius: 12px;
+
+    background:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+
+    color:
+        var(--tg-theme-text-color, var(--text));
+
+    font-size: 15px;
+    font-weight: 500;
+
+    cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+}
+
+.bookmark-option:active {
+    opacity: 0.65;
+}
+
+.bookmark-option svg {
+    flex: 0 0 auto;
+
+    width: 21px;
+    height: 21px;
+
+    fill: currentColor;
+}
+
+/* =========================================================
+   Настройки чтения
+   ========================================================= */
+
+.reader-settings-button {
+    width: 42px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border:
+        1px solid
+        rgba(128, 128, 128, 0.22);
+
+    border-radius: 10px;
+
+    background:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+
+    color:
+        var(
+            --tg-theme-text-color,
+            var(--text)
+        );
+
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    font-size: 16px;
+    font-weight: 700;
+
+    box-shadow: none;
+
+    cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.reader-settings-button:active {
+    transform: scale(0.96);
+}
+
+.reader-settings-button[hidden] {
+    display: none !important;
+}
+
+
+#reader-settings-overlay {
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.45);
+
+    z-index: 1040;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: opacity 0.25s ease;
+}
+
+#reader-settings-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+
+#reader-settings-menu {
+    position: fixed;
+
+    left: 0;
+    right: 0;
+    bottom: -110%;
+
+    width: 100%;
+    max-height: 82vh;
+
+    overflow-y: auto;
+
+    background:
+        var(
+            --tg-theme-bg-color,
+            var(--bg)
+        );
+
+    color:
+        var(
+            --tg-theme-text-color,
+            var(--text)
+        );
+
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+
+    padding:
+        10px
+        18px
+        max(
+            18px,
+            env(safe-area-inset-bottom)
+        );
+
+    box-shadow:
+        0 -8px 30px rgba(0, 0, 0, 0.22);
+
+    z-index: 1050;
+
+    transition: bottom 0.28s ease;
+
+    -webkit-overflow-scrolling: touch;
+}
+
+#reader-settings-menu.open {
+    bottom: 0;
+}
+
+
+.reader-settings-handle {
+    width: 38px;
+    height: 4px;
+
+    margin: 2px auto 12px;
+
+    border-radius: 999px;
+
+    background:
+        var(
+            --tg-theme-hint-color,
+            #888
+        );
+
+    opacity: 0.45;
+
+    cursor: grab;
+
+    touch-action: none;
+
+    padding-top: 8px;
+    padding-bottom: 8px;
+
+    box-sizing: content-box;
+    background-clip: content-box;
+}
+
+#reader-settings-menu.dragging {
+    transition: none !important;
+
+    will-change: transform;
+}
+
+
+.reader-settings-header {
+    margin-bottom: 18px;
+
+    text-align: center;
+
+    font-size: 18px;
+    font-weight: 700;
+}
+
+
+.reader-setting-block {
+    padding: 14px 0;
+
+    border-bottom:
+        1px solid
+        rgba(128, 128, 128, 0.18);
+}
+
+.reader-setting-block:last-child {
+    border-bottom: 0;
+}
+
+
+.reader-setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+}
+
+
+.reader-setting-label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color:
+        var(
+            --tg-theme-text-color,
+            var(--text)
+        );
+
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.reader-setting-row .reader-setting-label {
+    margin-bottom: 0;
+}
+
+
+.reader-setting-description {
+    margin-top: 4px;
+
+    color:
+        var(
+            --tg-theme-hint-color,
+            #888
+        );
+
+    font-size: 12px;
+}
+
+
+.reader-setting-value {
+    flex: 0 0 auto;
+
+    color:
+        var(
+            --tg-theme-hint-color,
+            #888
+        );
+
+    font-size: 14px;
+}
+
+
+.reader-setting-select {
+    width: 100%;
+
+    padding: 12px 14px;
+
+    border:
+        1px solid
+        rgba(128, 128, 128, 0.25);
+
+    border-radius: 12px;
+
+    outline: none;
+
+    background:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+
+    color:
+        var(
+            --tg-theme-text-color,
+            var(--text)
+        );
+
+    font-size: 15px;
+}
+
+
+.reader-range-row {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+}
+
+
+.reader-range {
+    width: 100%;
+
+    accent-color:
+        var(
+            --tg-theme-button-color,
+            var(--link)
+        );
+}
+
+
+.reader-range-edge {
+    flex: 0 0 auto;
+
+    color:
+        var(
+            --tg-theme-hint-color,
+            #888
+        );
+
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.reader-range-edge-big {
+    font-size: 18px;
+}
+
+
+/* Toggle */
+
+.reader-switch {
+    position: relative;
+
+    flex: 0 0 auto;
+
+    width: 48px;
+    height: 28px;
+}
+
+.reader-switch input {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    opacity: 0;
+}
+
+.reader-switch-slider {
+    position: absolute;
+    inset: 0;
+
+    border-radius: 999px;
+
+    background:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+
+    transition:
+        background-color 0.2s ease;
+}
+
+.reader-switch-slider::before {
+    content: "";
+
+    position: absolute;
+
+    top: 4px;
+    left: 4px;
+
+    width: 20px;
+    height: 20px;
+
+    border-radius: 50%;
+
+    background: #fff;
+
+    box-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.25);
+
+    transition:
+        transform 0.2s ease;
+}
+
+.reader-switch input:checked
++ .reader-switch-slider {
+    background:
+        var(
+            --tg-theme-button-color,
+            var(--link)
+        );
+}
+
+.reader-switch input:checked
++ .reader-switch-slider::before {
+    transform: translateX(20px);
+}
+
+
+/* Темы */
+
+.reader-theme-buttons {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 8px;
+
+    margin-top: 8px;
+}
+
+.reader-theme-button {
+    min-width: 0;
+
+    padding: 11px 6px;
+
+    border:
+        1px solid
+        rgba(128, 128, 128, 0.25);
+
+    border-radius: 12px;
+
+    background:
+        var(
+            --tg-theme-secondary-bg-color,
+            var(--secondary-bg)
+        );
+
+    color:
+        var(
+            --tg-theme-text-color,
+            var(--text)
+        );
+
+    font-size: 13px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    -webkit-tap-highlight-color: transparent;
+}
+
+.reader-theme-button.active {
+    border-color:
+        var(
+            --tg-theme-button-color,
+            var(--link)
+        );
+
+    box-shadow:
+        inset 0 0 0 1px
+        var(
+            --tg-theme-button-color,
+            var(--link)
+        );
+}
+
+/* =========================================================
+   Абзацный отступ
+   ========================================================= */
+
+#chapter-content.reader-indent p:not(:has(img)):not(:has(figure)):not([style*="text-align: center"]):not([style*="text-align:center"]):not([style*="text-align: right"]):not([style*="text-align:right"]) {
+    text-indent: 1.5em;
+}
