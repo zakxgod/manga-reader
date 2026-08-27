@@ -813,6 +813,7 @@
             readReaderSettings();
 
         applyStoredReaderSettings();
+        setTimeout(function(){ document.documentElement.classList.add('reader-transitions-ready'); }, 50);
 
         syncReaderSettingsControls();
 
@@ -1266,17 +1267,25 @@
         }
 
         closeReaderSettings();
+        if (typeof updateReadingProgress === 'function') updateReadingProgress();
     }
 
     function showContent(title) {
         $loader.hidden = true;
         $reader.hidden = false;
+        if (typeof $content !== 'undefined' && $content) {
+            $content.classList.remove('content-entering');
+            void $content.offsetWidth;
+            $content.classList.add('content-entering');
+        }
         $error.hidden = true;
         if (title) $title.textContent = title;
 
         if ($readerSettingsButton) {
             $readerSettingsButton.hidden = false;
         }
+
+        if (typeof updateReadingProgress === 'function') updateReadingProgress();
     }
 
     function showError(title, message) {
@@ -1291,6 +1300,7 @@
         }
 
         closeReaderSettings();
+        if (typeof updateReadingProgress === 'function') updateReadingProgress();
     }
 
     // ==================== Telegraph: рендеринг контента ====================
@@ -2040,7 +2050,7 @@
 
             if (pendingBookmark.paragraph) {
                 pendingBookmark.paragraph
-                    .classList.remove('bookmarked');
+                    .classList.remove('bookmarked'); if(pendingBookmark && pendingBookmark.paragraph) { pendingBookmark.paragraph.classList.add('bookmark-remove-flash-anim'); setTimeout(() => { if(pendingBookmark && pendingBookmark.paragraph) pendingBookmark.paragraph.classList.remove('bookmark-remove-flash-anim'); }, 400); }
             }
 
             if (bookmarkButtonText) {
@@ -2080,7 +2090,7 @@
         // Подсвечиваем новый параграф.
         if (pendingBookmark.paragraph) {
             pendingBookmark.paragraph
-                .classList.add('bookmarked');
+                .classList.add('bookmarked', 'bookmark-flash-anim'); if(pendingBookmark && pendingBookmark.paragraph) { setTimeout(() => { if(pendingBookmark && pendingBookmark.paragraph) pendingBookmark.paragraph.classList.remove('bookmark-flash-anim'); }, 400); }
         }
 
         if (bookmarkButtonText) {
@@ -2127,7 +2137,99 @@
         processFootnotes();
         setupBookmarks();
         setupCopyProtection();
+        if (typeof enhanceReaderImages === 'function') enhanceReaderImages();
     }
+
+    function enhanceReaderImages() {
+        if (!$content) return;
+        const images = $content.querySelectorAll('img');
+        const $lightbox = document.getElementById('reader-image-lightbox');
+        const $lightboxImg = $lightbox ? $lightbox.querySelector('.lightbox-img') : null;
+        
+        images.forEach(img => {
+            if (img.dataset.enhanced) return;
+            img.dataset.enhanced = 'true';
+            
+            if (img.complete && img.naturalWidth > 0) {
+                img.classList.add('img-loaded');
+            } else {
+                img.classList.add('img-loading');
+                img.addEventListener('load', () => {
+                    img.classList.remove('img-loading');
+                    img.classList.add('img-loaded');
+                }, { once: true });
+                img.addEventListener('error', () => {
+                    img.classList.remove('img-loading');
+                }, { once: true });
+            }
+            
+            img.addEventListener('click', (e) => {
+                if (typeof $readerSettingsMenu !== 'undefined' && $readerSettingsMenu && $readerSettingsMenu.classList.contains('open')) return;
+                const fModal = document.getElementById('footnote-modal');
+                if (fModal && !fModal.classList.contains('hidden') && fModal.style.display !== 'none' && fModal.getAttribute('aria-hidden') !== 'true') return;
+                
+                if ($lightbox && $lightboxImg) {
+                    $lightboxImg.src = img.src;
+                    $lightbox.classList.remove('hidden');
+                    $lightbox.setAttribute('aria-hidden', 'false');
+                    lockLightboxScroll();
+                }
+                e.stopPropagation();
+            });
+        });
+    }
+
+    let lightboxSavedScrollY = 0;
+    let lightboxScrollLocked = false;
+
+    function lockLightboxScroll() {
+        if (lightboxScrollLocked) return;
+        lightboxSavedScrollY = window.scrollY || window.pageYOffset || 0;
+        document.body.style.position = 'fixed';
+        document.body.style.top = '-' + lightboxSavedScrollY + 'px';
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+        document.documentElement.classList.add('reader-lightbox-open');
+        document.body.classList.add('reader-lightbox-open');
+        lightboxScrollLocked = true;
+    }
+
+    function unlockLightboxScroll() {
+        if (!lightboxScrollLocked) return;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        document.documentElement.classList.remove('reader-lightbox-open');
+        document.body.classList.remove('reader-lightbox-open');
+        window.scrollTo(0, lightboxSavedScrollY);
+        lightboxScrollLocked = false;
+    }
+
+    const $lightbox = document.getElementById('reader-image-lightbox');
+    function closeLightbox() {
+        if (!$lightbox || $lightbox.classList.contains('hidden')) return;
+        $lightbox.classList.add('hidden');
+        $lightbox.setAttribute('aria-hidden', 'true');
+        const $lightboxImg = $lightbox.querySelector('.lightbox-img');
+        if ($lightboxImg) $lightboxImg.src = '';
+        
+        unlockLightboxScroll();
+    }
+    if ($lightbox) {
+        const $lightboxClose = $lightbox.querySelector('.lightbox-close');
+        const $lightboxOverlay = $lightbox.querySelector('.lightbox-overlay');
+        if ($lightboxClose) $lightboxClose.addEventListener('click', closeLightbox);
+        if ($lightboxOverlay) $lightboxOverlay.addEventListener('click', closeLightbox);
+    }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeLightbox();
+    });
+
 
     // ==================== Главная логика ====================
 
@@ -2210,6 +2312,7 @@
     let hideScrollbarTimeout = null;
 
     function updateReaderScrollbarMetrics() {
+        if (typeof updateReadingProgress === 'function') updateReadingProgress();
         if (!$scrollbar || !$scrollbarTrack || !$scrollbarThumb) return;
 
         maxScroll = document.documentElement.scrollHeight - window.innerHeight;
@@ -2246,7 +2349,24 @@
         }
     }
 
+    function updateReadingProgress() {
+        var pb = document.getElementById('reader-progress-bar');
+        if (!pb) return;
+        var mScroll = document.documentElement.scrollHeight - window.innerHeight;
+        
+        if (typeof $reader !== 'undefined' && $reader && $reader.hidden || mScroll <= 50) {
+            pb.style.display = 'none';
+            pb.style.transform = 'scaleX(0)';
+        } else {
+            pb.style.display = 'block';
+            var ratio = Math.max(0, Math.min(1, window.scrollY / mScroll));
+            pb.style.transform = `scaleX(${ratio})`;
+        }
+    }
+
     function updateReaderScrollbarPosition() {
+        if (typeof updateReadingProgress === 'function') updateReadingProgress();
+        
         if (!scrollbarVisible) return;
         
         maxScroll = document.documentElement.scrollHeight - window.innerHeight;
@@ -2257,7 +2377,6 @@
         
         let thumbY = scrollRatio * thumbTravel;
         $scrollbarThumb.style.transform = `translate(-50%, ${thumbY}px)`;
-        
         wakeUpScrollbar();
     }
 
@@ -2267,8 +2386,10 @@
         clearTimeout(hideScrollbarTimeout);
         if (!isDraggingThumb) {
             hideScrollbarTimeout = setTimeout(() => {
-                $scrollbar.classList.remove('active');
-            }, 1500);
+                if (!isDraggingThumb) {
+                    $scrollbar.classList.remove('active');
+                }
+            }, 800);
         }
     }
 
@@ -2283,6 +2404,7 @@
                 
                 $scrollbarThumb.setPointerCapture(e.pointerId);
                 $scrollbar.classList.add('active');
+                $scrollbar.classList.add('dragging');
                 e.preventDefault();
             } else {
                 const trackRect = $scrollbarTrack.getBoundingClientRect();
@@ -2320,6 +2442,7 @@
             if (isDraggingThumb) {
                 isDraggingThumb = false;
                 $scrollbarThumb.releasePointerCapture(e.pointerId);
+                $scrollbar.classList.remove('dragging');
                 wakeUpScrollbar();
                 updateReaderScrollbarPosition();
             }

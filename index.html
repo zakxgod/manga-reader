@@ -12,13 +12,15 @@
                    frame-src 'none';">
     <title>📖 Читалка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css?v=12">
+    <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
     <!-- Загрузка -->
+    <div id="reader-progress-bar" aria-hidden="true"></div>
+
     <div id="loader">
-        <div class="spinner"></div>
-        <p>Загрузка главы…</p>
+        <div class="loader-icon">📖</div>
+        <p class="loader-text">Загрузка главы<span class="dots"><span>.</span><span>.</span><span>.</span></span></p>
     </div>
 
     <!-- Контент главы -->
@@ -277,6 +279,14 @@
         </div>
     </div>
 
-    <script src="reader.js?v=13"></script>
+
+    <!-- ==================== IMAGE LIGHTBOX ==================== -->
+    <div id="reader-image-lightbox" class="hidden" aria-hidden="true">
+        <div class="lightbox-overlay"></div>
+        <img class="lightbox-img" src="" alt="">
+        <button class="lightbox-close" aria-label="Закрыть">&times;</button>
+    </div>
+
+    <script src="reader.js?v=14"></script>
 </body>
 </html>
