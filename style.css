@@ -1076,144 +1076,45 @@ html {
     width: 8px;
 }
 
-
-/* ==================== UX/POLISH PATCH ==================== */
-
-/* Theme Transition */
-.reader-transitions-ready body,
-.reader-transitions-ready #reader,
-.reader-transitions-ready #chapter-content,
-.reader-transitions-ready .reader-settings-button,
-.reader-transitions-ready #reader-settings-menu,
-.reader-transitions-ready #footnote-modal .modal-content,
-.reader-transitions-ready #bookmark-menu {
-    transition: background-color 0.2s ease-out, color 0.2s ease-out, border-color 0.2s ease-out, box-shadow 0.2s ease-out, fill 0.2s ease-out, opacity 0.2s ease-out;
-}
-
-/* Chapter Appearance */
-@keyframes content-fade-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.content-entering {
-    animation: content-fade-in 0.2s ease-out forwards;
-}
-
-/* Scrollbar States */
-#reader-scrollbar {
-    opacity: 0.25;
-    transition: opacity 0.2s ease-out;
-}
-#reader-scrollbar.active { opacity: 0.65; }
-#reader-scrollbar.dragging { opacity: 1; }
-
-/* Image Shimmer & Fade */
-@keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-.img-loading {
-    opacity: 0.5;
-    background: linear-gradient(90deg, var(--tg-theme-secondary-bg-color, #eee) 25%, var(--tg-theme-bg-color, #fff) 50%, var(--tg-theme-secondary-bg-color, #eee) 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite linear;
-}
-.img-loaded {
-    opacity: 1;
-    transition: opacity 0.25s ease-out;
-}
-
-/* Lightbox */
-#reader-image-lightbox {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    z-index: 9999;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 1; transition: opacity 0.2s ease-out;
-}
-#reader-image-lightbox.hidden {
-    opacity: 0; pointer-events: none;
-}
-.lightbox-overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-}
-.lightbox-img {
-    position: relative; max-width: 96vw; max-height: 92vh;
-    object-fit: contain; z-index: 10000;
-}
-.lightbox-close {
-    position: absolute; top: 16px; right: 16px; z-index: 10001;
-    background: rgba(0, 0, 0, 0.5); color: #fff;
-    border: none; border-radius: 50%; width: 40px; height: 40px;
-    font-size: 24px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer;
-}
-
-/* Progress Line */
+/* ==================== PROGRESS BAR & LOADER ==================== */
 #reader-progress-bar {
-    position: fixed; top: 0; left: 0; width: 100%; height: 2px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
     background: var(--tg-theme-button-color, #3390ec);
     z-index: 1000;
-    transform-origin: left; transform: scaleX(0);
+    transform: scaleX(0);
+    transform-origin: left center;
+    pointer-events: none;
 }
 
-/* Bookmark Micro-animation */
-@keyframes bookmark-flash {
-    0% { background-color: var(--tg-theme-secondary-bg-color, rgba(0,0,0,0.05)); }
-    50% { background-color: var(--tg-theme-button-color, rgba(51,144,236,0.3)); }
-    100% { background-color: transparent; }
-}
-.bookmark-flash-anim {
-    animation: bookmark-flash 0.35s ease-out;
-}
-@keyframes bookmark-remove-flash {
-    0% { background-color: var(--tg-theme-button-color, rgba(51,144,236,0.3)); }
-    100% { background-color: transparent; }
-}
-.bookmark-remove-flash-anim {
-    animation: bookmark-remove-flash 0.35s ease-out;
-}
+.spinner { display: none !important; }
 
-/* Micro-interactions */
-.btn, .reader-theme-button, .reader-settings-button, #btn-add-bookmark {
-    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
+.loader-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
 }
-.btn:active, .reader-theme-button:active, .reader-settings-button:active, #btn-add-bookmark:active {
-    transform: scale(0.95);
+.loader-text {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
 }
+.loader-dots span {
+    animation: loader-dot-blink 1.4s infinite both;
+}
+.loader-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loader-dots span:nth-child(3) { animation-delay: 0.4s; }
 
-/* Settings Sheet Polish */
-#reader-settings-menu {
-    transition: bottom 0.25s cubic-bezier(0.3, 1, 0.3, 1), transform 0.25s cubic-bezier(0.3, 1, 0.3, 1);
-}
-#reader-settings-overlay {
-    transition: opacity 0.25s ease-out;
-}
-
-/* Loader Polish */
-#loader { background: var(--tg-theme-bg-color, #fff); }
-.loader-icon { font-size: 32px; margin-bottom: 12px; }
-.loader-text { font-size: 16px; font-weight: 500; }
-.dots span {
-    animation: dot-blink 1.4s infinite both;
-}
-.dots span:nth-child(2) { animation-delay: 0.2s; }
-.dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes dot-blink {
-    0%, 80%, 100% { opacity: 0; }
+@keyframes loader-dot-blink {
+    0%, 80%, 100% { opacity: 0.25; }
     40% { opacity: 1; }
 }
 
-/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-    .content-entering, .img-loading, .bookmark-flash-anim, .bookmark-remove-flash-anim, .dots span {
+    .loader-dots span {
         animation: none !important;
+        opacity: 1;
     }
-    .reader-transitions-ready *, .btn, .reader-theme-button, .reader-settings-button, #reader-settings-menu, #reader-settings-overlay, #reader-image-lightbox {
-        transition: none !important;
-    }
-}
-
-html.reader-lightbox-open, body.reader-lightbox-open {
-    overscroll-behavior: none;
 }
