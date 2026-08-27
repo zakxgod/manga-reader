@@ -69,7 +69,6 @@
     const $readerProgressBar = document.getElementById('reader-progress-bar');
     function updateReadingProgress() {
         if (!$readerProgressBar) return;
-        const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         
         if (($reader && $reader.hidden) || maxScroll <= 50) {
             $readerProgressBar.style.transform = 'scaleX(0)';
@@ -80,6 +79,7 @@
             $readerProgressBar.style.transform = 'scaleX(' + ratio + ')';
         }
     }
+    let maxScroll = 0;
     const $reader = document.getElementById('reader');
     const $title = document.getElementById('chapter-title');
     const $content = document.getElementById('chapter-content');
@@ -687,46 +687,7 @@
     }
 
 
-    function preventReaderBackgroundScroll(event) {
-        if (
-            !$readerSettingsMenu
-            || !$readerSettingsMenu
-                .classList
-                .contains('open')
-        ) {
-            return;
-        }
-
-        /*
-            Если событие происходит ВНУТРИ панели —
-            не блокируем, чтобы сама панель могла скроллиться.
-        */
-        if (
-            $readerSettingsMenu
-                .contains(event.target)
-        ) {
-            return;
-        }
-
-        event.preventDefault();
-    }
-
-    document.addEventListener(
-        'touchmove',
-        preventReaderBackgroundScroll,
-        {
-            passive: false
-        }
-    );
-
-    document.addEventListener(
-        'wheel',
-        preventReaderBackgroundScroll,
-        {
-            passive: false
-        }
-    );
-
+    
 
     let readerSettingsPointerId = null;
     let readerSettingsPointerStartY = 0;
@@ -1211,7 +1172,11 @@
                 if (
                     event.key === 'Escape'
                 ) {
-                    closeReaderSettings();
+                    if (typeof closeReaderImageLightbox === 'function' && document.getElementById('reader-image-lightbox') && !document.getElementById('reader-image-lightbox').hidden) {
+                        closeReaderImageLightbox();
+                    } else {
+                        closeReaderSettings();
+                    }
                 }
             }
         );
@@ -1917,7 +1882,8 @@
 
             p.addEventListener(
                 'touchmove',
-                cancelPress
+                cancelPress,
+                { passive: true }
             );
 
             p.addEventListener(
@@ -2218,7 +2184,6 @@
     let trackHeight = 0;
     let thumbHeight = 0;
     let thumbTravel = 0;
-    let maxScroll = 0;
     
     let isDraggingThumb = false;
     let dragStartY = 0;
@@ -2227,10 +2192,9 @@
     let hideScrollbarTimeout = null;
 
     function updateReaderScrollbarMetrics() {
+        maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         if (typeof updateReadingProgress === 'function') updateReadingProgress();
         if (!$scrollbar || !$scrollbarTrack || !$scrollbarThumb) return;
-
-        maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         
         if (maxScroll <= 50) {
             $scrollbar.hidden = true;
@@ -2265,10 +2229,7 @@
     }
 
     function updateReaderScrollbarPosition() {
-        if (typeof updateReadingProgress === 'function') updateReadingProgress();
         if (!scrollbarVisible) return;
-        
-        maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         if (maxScroll <= 0) return;
         
         let scrollRatio = window.scrollY / maxScroll;
@@ -2276,8 +2237,6 @@
         
         let thumbY = scrollRatio * thumbTravel;
         $scrollbarThumb.style.transform = `translate(-50%, ${thumbY}px)`;
-        
-        wakeUpScrollbar();
     }
 
     function wakeUpScrollbar() {
@@ -2348,8 +2307,19 @@
         $scrollbar.addEventListener('pointercancel', endDrag);
     }
 
+    let readerScrollRafPending = false;
     window.addEventListener('scroll', function() {
-        window.requestAnimationFrame(updateReaderScrollbarPosition);
+        if (readerScrollRafPending) {
+            return;
+        }
+        readerScrollRafPending = true;
+        window.requestAnimationFrame(function() {
+            readerScrollRafPending = false;
+            updateReaderScrollbarPosition();
+            if (typeof updateReadingProgress === 'function') {
+                updateReadingProgress();
+            }
+        });
     }, { passive: true });
 
     window.addEventListener('resize', function() {
@@ -2379,5 +2349,84 @@
     }
 
     loadChapter();
+
+    // ==================== IMAGE LIGHTBOX ====================
+    const $readerImageLightbox = document.getElementById('reader-image-lightbox');
+    const $readerImageLightboxImage = document.getElementById('reader-image-lightbox-image');
+    const $readerImageLightboxClose = document.getElementById('reader-image-lightbox-close');
+    const $readerImageLightboxBackdrop = $readerImageLightbox ? $readerImageLightbox.querySelector('.reader-image-lightbox-backdrop') : null;
+
+    let imageLightboxSavedScrollY = 0;
+    let imageLightboxScrollLocked = false;
+
+    function closeReaderImageLightbox() {
+        if (!$readerImageLightbox || $readerImageLightbox.hidden) return;
+        
+        $readerImageLightbox.hidden = true;
+        $readerImageLightbox.setAttribute('aria-hidden', 'true');
+        if ($readerImageLightboxImage) {
+            $readerImageLightboxImage.src = '';
+        }
+        
+        if (imageLightboxScrollLocked) {
+            document.body.style.position = '';
+            document.body.style.top = '';
+            document.body.style.left = '';
+            document.body.style.right = '';
+            document.body.style.width = '';
+            document.body.style.overflow = '';
+            window.scrollTo(0, imageLightboxSavedScrollY);
+            imageLightboxScrollLocked = false;
+        }
+    }
+
+    if ($readerImageLightboxClose) {
+        $readerImageLightboxClose.addEventListener('click', closeReaderImageLightbox);
+    }
+    if ($readerImageLightboxBackdrop) {
+        $readerImageLightboxBackdrop.addEventListener('click', closeReaderImageLightbox);
+    }
+    if ($readerImageLightboxImage) {
+        $readerImageLightboxImage.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        $readerImageLightboxImage.addEventListener('dragstart', function (e) { e.preventDefault(); });
+    }
+
+    if ($content) {
+        $content.addEventListener('click', function (event) {
+            const image = event.target.closest('img');
+            if (!image || !$content.contains(image)) return;
+            
+            if (typeof $readerSettingsMenu !== 'undefined' && $readerSettingsMenu && $readerSettingsMenu.classList.contains('open')) return;
+            if (typeof footnoteModal !== 'undefined' && footnoteModal && footnoteModal.classList.contains('open')) return;
+            if (typeof bookmarkMenu !== 'undefined' && bookmarkMenu && bookmarkMenu.classList.contains('open')) return;
+            
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const src = image.currentSrc || image.src || image.getAttribute('src');
+            if (!src) return;
+            
+            if ($readerImageLightbox && $readerImageLightboxImage) {
+                $readerImageLightboxImage.src = src;
+                if (image.alt) {
+                    $readerImageLightboxImage.alt = image.alt;
+                }
+                
+                if (!imageLightboxScrollLocked) {
+                    imageLightboxSavedScrollY = window.scrollY || window.pageYOffset || 0;
+                    document.body.style.position = 'fixed';
+                    document.body.style.top = '-' + imageLightboxSavedScrollY + 'px';
+                    document.body.style.left = '0';
+                    document.body.style.right = '0';
+                    document.body.style.width = '100%';
+                    document.body.style.overflow = 'hidden';
+                    imageLightboxScrollLocked = true;
+                }
+                
+                $readerImageLightbox.hidden = false;
+                $readerImageLightbox.setAttribute('aria-hidden', 'false');
+            }
+        });
+    }
 
 })();

@@ -12,7 +12,7 @@
                    frame-src 'none';">
     <title>📖 Читалка</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="stylesheet" href="style.css?v=13">
+    <link rel="stylesheet" href="style.css?v=14">
 </head>
 <body>
     <!-- Загрузка -->
@@ -284,6 +284,14 @@
         </div>
     </div>
 
-    <script src="reader.js?v=14"></script>
+    
+    <!-- ==================== IMAGE LIGHTBOX ==================== -->
+    <div id="reader-image-lightbox" hidden aria-hidden="true">
+        <div class="reader-image-lightbox-backdrop"></div>
+        <img id="reader-image-lightbox-image" src="" alt="" draggable="false">
+        <button id="reader-image-lightbox-close" type="button" aria-label="Закрыть изображение">×</button>
+    </div>
+
+    <script src="reader.js?v=16"></script>
 </body>
 </html>

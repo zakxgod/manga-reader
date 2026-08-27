@@ -338,7 +338,8 @@ html {
 #chapter-content img {
     -webkit-user-drag: none;
     user-drag: none;
-    pointer-events: none;
+    pointer-events: auto;
+    cursor: zoom-in;
 }
 
 /* ==================== Подчёркивание ==================== */
@@ -1117,4 +1118,59 @@ html {
         animation: none !important;
         opacity: 1;
     }
+}
+
+/* ==================== IMAGE LIGHTBOX ==================== */
+#reader-image-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+#reader-image-lightbox[hidden] {
+    display: none !important;
+}
+.reader-image-lightbox-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.92);
+}
+#reader-image-lightbox-image {
+    position: relative;
+    z-index: 1;
+    max-width: 96vw;
+    max-height: 92vh;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    margin: 0;
+    padding: 0;
+    border-radius: 4px;
+    cursor: default;
+    -webkit-user-drag: none;
+    user-drag: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+#reader-image-lightbox-close {
+    position: absolute;
+    top: max(16px, env(safe-area-inset-top));
+    right: max(16px, env(safe-area-inset-right));
+    z-index: 2;
+    width: 42px;
+    height: 42px;
+    background: rgba(0, 0, 0, 0.45);
+    color: #ffffff;
+    border: none;
+    border-radius: 50%;
+    font-size: 28px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
 }
