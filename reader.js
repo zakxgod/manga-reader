@@ -1926,10 +1926,53 @@
                     );
 
                     setTimeout(function () {
-                        target.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
+                        var bookmarkRestoreUserInteracted = false;
+
+                        function interactionHandler() {
+                            bookmarkRestoreUserInteracted = true;
+                        }
+
+                        document.addEventListener('wheel', interactionHandler, { passive: true });
+                        document.addEventListener('touchstart', interactionHandler, { passive: true });
+                        document.addEventListener('pointerdown', interactionHandler, { passive: true });
+
+                        function centerRestoredBookmark(tgt) {
+                            if (!tgt || !tgt.isConnected) return;
+                            var rect = tgt.getBoundingClientRect();
+                            var targetCenter = rect.top + (rect.height / 2);
+                            var viewportCenter = window.innerHeight / 2;
+                            var delta = targetCenter - viewportCenter;
+
+                            if (Math.abs(delta) > 4) {
+                                var previousScrollBehavior = document.documentElement.style.scrollBehavior;
+                                document.documentElement.style.scrollBehavior = 'auto';
+                                window.scrollBy(0, delta);
+                                document.documentElement.style.scrollBehavior = previousScrollBehavior;
+                            }
+                        }
+
+                        var previousScrollBehavior = document.documentElement.style.scrollBehavior;
+                        document.documentElement.style.scrollBehavior = 'auto';
+                        target.scrollIntoView({ behavior: 'auto', block: 'center' });
+                        document.documentElement.style.scrollBehavior = previousScrollBehavior;
+
+                        window.requestAnimationFrame(function () {
+                            window.requestAnimationFrame(function () {
+                                if (!bookmarkRestoreUserInteracted) {
+                                    centerRestoredBookmark(target);
+                                }
+                            });
                         });
+
+                        setTimeout(function () {
+                            if (!bookmarkRestoreUserInteracted) {
+                                centerRestoredBookmark(target);
+                            }
+                            document.removeEventListener('wheel', interactionHandler);
+                            document.removeEventListener('touchstart', interactionHandler);
+                            document.removeEventListener('pointerdown', interactionHandler);
+                        }, 700);
+
                     }, 300);
                 }
             }
