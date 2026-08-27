@@ -1951,15 +1951,10 @@
                             }
                         }
 
-                        var previousScrollBehavior = document.documentElement.style.scrollBehavior;
-                        document.documentElement.style.scrollBehavior = 'auto';
-                        target.scrollIntoView({ behavior: 'auto', block: 'center' });
-                        document.documentElement.style.scrollBehavior = previousScrollBehavior;
-
                         window.requestAnimationFrame(function () {
                             window.requestAnimationFrame(function () {
                                 if (!bookmarkRestoreUserInteracted) {
-                                    centerRestoredBookmark(target);
+                                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 }
                             });
                         });
@@ -1968,10 +1963,16 @@
                             if (!bookmarkRestoreUserInteracted) {
                                 centerRestoredBookmark(target);
                             }
+                        }, 400);
+
+                        setTimeout(function () {
+                            if (!bookmarkRestoreUserInteracted) {
+                                centerRestoredBookmark(target);
+                            }
                             document.removeEventListener('wheel', interactionHandler);
                             document.removeEventListener('touchstart', interactionHandler);
                             document.removeEventListener('pointerdown', interactionHandler);
-                        }, 700);
+                        }, 800);
 
                     }, 300);
                 }
