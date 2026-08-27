@@ -2247,7 +2247,7 @@
     }
 
     function updateReaderScrollbarPosition() {
-        if (!scrollbarVisible || isDraggingThumb) return;
+        if (!scrollbarVisible) return;
         
         maxScroll = document.documentElement.scrollHeight - window.innerHeight;
         if (maxScroll <= 0) return;
@@ -2279,11 +2279,7 @@
             const thumbRect = $scrollbarThumb.getBoundingClientRect();
             if (e.clientY >= thumbRect.top && e.clientY <= thumbRect.bottom) {
                 isDraggingThumb = true;
-                dragStartY = e.clientY;
-                
-                const style = window.getComputedStyle($scrollbarThumb);
-                const matrix = new DOMMatrix(style.transform);
-                dragStartThumbY = matrix.m42;
+                dragStartY = e.clientY - thumbRect.top;
                 
                 $scrollbarThumb.setPointerCapture(e.pointerId);
                 $scrollbar.classList.add('active');
@@ -2294,7 +2290,7 @@
                 let newThumbY = clickY - (thumbHeight / 2);
                 newThumbY = Math.max(0, Math.min(thumbTravel, newThumbY));
                 
-                let scrollRatio = newThumbY / thumbTravel;
+                let scrollRatio = thumbTravel > 0 ? newThumbY / thumbTravel : 0;
                 window.scrollTo({
                     top: scrollRatio * maxScroll,
                     behavior: 'auto'
@@ -2306,11 +2302,9 @@
         $scrollbar.addEventListener('pointermove', function(e) {
             if (!isDraggingThumb) return;
             
-            let deltaY = e.clientY - dragStartY;
-            let newThumbY = dragStartThumbY + deltaY;
+            const trackRect = $scrollbarTrack.getBoundingClientRect();
+            let newThumbY = e.clientY - trackRect.top - dragStartY;
             newThumbY = Math.max(0, Math.min(thumbTravel, newThumbY));
-            
-            $scrollbarThumb.style.transform = `translate(-50%, ${newThumbY}px)`;
             
             if (thumbTravel > 0) {
                 let scrollRatio = newThumbY / thumbTravel;
@@ -2318,6 +2312,7 @@
                     top: scrollRatio * maxScroll,
                     behavior: 'auto'
                 });
+                updateReaderScrollbarPosition();
             }
         });
 
@@ -2326,6 +2321,7 @@
                 isDraggingThumb = false;
                 $scrollbarThumb.releasePointerCapture(e.pointerId);
                 wakeUpScrollbar();
+                updateReaderScrollbarPosition();
             }
         };
 
@@ -2334,9 +2330,7 @@
     }
 
     window.addEventListener('scroll', function() {
-        if (!isDraggingThumb) {
-            window.requestAnimationFrame(updateReaderScrollbarPosition);
-        }
+        window.requestAnimationFrame(updateReaderScrollbarPosition);
     }, { passive: true });
 
     window.addEventListener('resize', function() {
