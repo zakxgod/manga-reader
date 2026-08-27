@@ -1942,13 +1942,17 @@
                             var targetCenter = rect.top + (rect.height / 2);
                             var viewportCenter = window.innerHeight / 2;
                             var delta = targetCenter - viewportCenter;
+                            
+                            var BOOKMARK_FINAL_CORRECTION_THRESHOLD = 24;
 
-                            if (Math.abs(delta) > 4) {
-                                var previousScrollBehavior = document.documentElement.style.scrollBehavior;
-                                document.documentElement.style.scrollBehavior = 'auto';
-                                window.scrollBy(0, delta);
-                                document.documentElement.style.scrollBehavior = previousScrollBehavior;
+                            if (Math.abs(delta) <= BOOKMARK_FINAL_CORRECTION_THRESHOLD) {
+                                return;
                             }
+
+                            var previousScrollBehavior = document.documentElement.style.scrollBehavior;
+                            document.documentElement.style.scrollBehavior = 'auto';
+                            window.scrollBy(0, delta);
+                            document.documentElement.style.scrollBehavior = previousScrollBehavior;
                         }
 
                         window.requestAnimationFrame(function () {
@@ -1958,12 +1962,6 @@
                                 }
                             });
                         });
-
-                        setTimeout(function () {
-                            if (!bookmarkRestoreUserInteracted) {
-                                centerRestoredBookmark(target);
-                            }
-                        }, 400);
 
                         setTimeout(function () {
                             if (!bookmarkRestoreUserInteracted) {
@@ -2413,13 +2411,23 @@
         }
         
         if (imageLightboxScrollLocked) {
+            var previousScrollBehavior = document.documentElement.style.scrollBehavior;
+            document.documentElement.style.scrollBehavior = 'auto';
+
             document.body.style.position = '';
             document.body.style.top = '';
             document.body.style.left = '';
             document.body.style.right = '';
             document.body.style.width = '';
             document.body.style.overflow = '';
+            
             window.scrollTo(0, imageLightboxSavedScrollY);
+            
+            window.requestAnimationFrame(function () {
+                window.scrollTo(0, imageLightboxSavedScrollY);
+                document.documentElement.style.scrollBehavior = previousScrollBehavior;
+            });
+            
             imageLightboxScrollLocked = false;
         }
     }
