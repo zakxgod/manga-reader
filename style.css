@@ -1024,3 +1024,54 @@ html {
 #chapter-content.reader-indent p:not(:has(img)):not(:has(figure)):not([style*="text-align: center"]):not([style*="text-align:center"]):not([style*="text-align: right"]):not([style*="text-align:right"]) {
     text-indent: 1.5em;
 }
+
+/* =========================================================
+   READER SCROLLBAR
+   ========================================================= */
+
+#reader-scrollbar {
+    position: fixed;
+    top: 10vh;
+    bottom: 10vh;
+    right: 0;
+    width: 28px;
+    z-index: 900;
+    pointer-events: auto;
+    touch-action: none;
+    opacity: 0.4;
+    transition: opacity 0.25s ease;
+    display: flex;
+    justify-content: center;
+}
+
+#reader-scrollbar[hidden] {
+    display: none !important;
+}
+
+#reader-scrollbar.active,
+#reader-scrollbar:hover {
+    opacity: 0.8;
+}
+
+#reader-scrollbar-track {
+    position: relative;
+    width: 4px;
+    height: 100%;
+    border-radius: 4px;
+    background: var(--reader-scrollbar-track, rgba(128, 128, 128, 0.15));
+}
+
+#reader-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    border-radius: 4px;
+    background: var(--reader-scrollbar-thumb, rgba(128, 128, 128, 0.5));
+}
+
+#reader-scrollbar.active #reader-scrollbar-thumb {
+    background: var(--reader-scrollbar-thumb-active, rgba(128, 128, 128, 0.8));
+    width: 8px;
+}

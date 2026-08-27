@@ -178,7 +178,10 @@
             '--bg': '#ffffff',
             '--secondary-bg': '#f2f3f5',
             '--text': '#1d1d1f',
-            '--link': '#2678d9'
+            '--link': '#2678d9',
+            '--reader-scrollbar-track': 'rgba(0, 0, 0, 0.05)',
+            '--reader-scrollbar-thumb': 'rgba(0, 0, 0, 0.25)',
+            '--reader-scrollbar-thumb-active': 'rgba(0, 0, 0, 0.45)'
         },
 
         dark: {
@@ -193,7 +196,10 @@
             '--bg': '#111318',
             '--secondary-bg': '#1d2027',
             '--text': '#e8eaed',
-            '--link': '#63a8ff'
+            '--link': '#63a8ff',
+            '--reader-scrollbar-track': 'rgba(255, 255, 255, 0.05)',
+            '--reader-scrollbar-thumb': 'rgba(255, 255, 255, 0.25)',
+            '--reader-scrollbar-thumb-active': 'rgba(255, 255, 255, 0.45)'
         },
 
         sepia: {
@@ -208,7 +214,10 @@
             '--bg': '#f4ecd8',
             '--secondary-bg': '#e9dec4',
             '--text': '#3b3226',
-            '--link': '#8b5a2b'
+            '--link': '#8b5a2b',
+            '--reader-scrollbar-track': 'rgba(139, 90, 43, 0.08)',
+            '--reader-scrollbar-thumb': 'rgba(139, 90, 43, 0.3)',
+            '--reader-scrollbar-thumb-active': 'rgba(139, 90, 43, 0.5)'
         }
     };
 
@@ -2180,6 +2189,181 @@
     });
 
     // ==================== Запуск ====================
+
+
+    // ==================== Reader Quick Scrollbar ====================
+
+    const $scrollbar = document.getElementById('reader-scrollbar');
+    const $scrollbarTrack = document.getElementById('reader-scrollbar-track');
+    const $scrollbarThumb = document.getElementById('reader-scrollbar-thumb');
+
+    let scrollbarVisible = false;
+    let trackHeight = 0;
+    let thumbHeight = 0;
+    let thumbTravel = 0;
+    let maxScroll = 0;
+    
+    let isDraggingThumb = false;
+    let dragStartY = 0;
+    let dragStartThumbY = 0;
+    
+    let hideScrollbarTimeout = null;
+
+    function updateReaderScrollbarMetrics() {
+        if (!$scrollbar || !$scrollbarTrack || !$scrollbarThumb) return;
+
+        maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        
+        if (maxScroll <= 50) {
+            $scrollbar.hidden = true;
+            scrollbarVisible = false;
+            return;
+        }
+
+        const isSettingsOpen = document.documentElement.classList.contains('reader-settings-open');
+        const isLoaderVisible = $loader && !$loader.hidden;
+        const isErrorVisible = $error && !$error.hidden;
+        const isFootnoteOpen = footnoteModal && footnoteModal.classList.contains('open');
+
+        if (isSettingsOpen || isLoaderVisible || isErrorVisible || isFootnoteOpen) {
+            $scrollbar.hidden = true;
+            scrollbarVisible = false;
+        } else {
+            $scrollbar.hidden = false;
+            scrollbarVisible = true;
+        }
+
+        if (scrollbarVisible) {
+            trackHeight = $scrollbarTrack.clientHeight;
+            
+            let rawThumbHeight = (window.innerHeight / document.documentElement.scrollHeight) * trackHeight;
+            thumbHeight = Math.max(36, Math.min(rawThumbHeight, trackHeight)); 
+            
+            $scrollbarThumb.style.height = thumbHeight + 'px';
+            thumbTravel = trackHeight - thumbHeight;
+            
+            updateReaderScrollbarPosition();
+        }
+    }
+
+    function updateReaderScrollbarPosition() {
+        if (!scrollbarVisible || isDraggingThumb) return;
+        
+        maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        if (maxScroll <= 0) return;
+        
+        let scrollRatio = window.scrollY / maxScroll;
+        scrollRatio = Math.max(0, Math.min(1, scrollRatio));
+        
+        let thumbY = scrollRatio * thumbTravel;
+        $scrollbarThumb.style.transform = `translate(-50%, ${thumbY}px)`;
+        
+        wakeUpScrollbar();
+    }
+
+    function wakeUpScrollbar() {
+        if (!scrollbarVisible) return;
+        $scrollbar.classList.add('active');
+        clearTimeout(hideScrollbarTimeout);
+        if (!isDraggingThumb) {
+            hideScrollbarTimeout = setTimeout(() => {
+                $scrollbar.classList.remove('active');
+            }, 1500);
+        }
+    }
+
+    if ($scrollbar) {
+        $scrollbar.addEventListener('pointerdown', function(e) {
+            wakeUpScrollbar();
+            
+            const thumbRect = $scrollbarThumb.getBoundingClientRect();
+            if (e.clientY >= thumbRect.top && e.clientY <= thumbRect.bottom) {
+                isDraggingThumb = true;
+                dragStartY = e.clientY;
+                
+                const style = window.getComputedStyle($scrollbarThumb);
+                const matrix = new DOMMatrix(style.transform);
+                dragStartThumbY = matrix.m42;
+                
+                $scrollbarThumb.setPointerCapture(e.pointerId);
+                $scrollbar.classList.add('active');
+                e.preventDefault();
+            } else {
+                const trackRect = $scrollbarTrack.getBoundingClientRect();
+                let clickY = e.clientY - trackRect.top;
+                let newThumbY = clickY - (thumbHeight / 2);
+                newThumbY = Math.max(0, Math.min(thumbTravel, newThumbY));
+                
+                let scrollRatio = newThumbY / thumbTravel;
+                window.scrollTo({
+                    top: scrollRatio * maxScroll,
+                    behavior: 'auto'
+                });
+                updateReaderScrollbarPosition();
+            }
+        });
+
+        $scrollbar.addEventListener('pointermove', function(e) {
+            if (!isDraggingThumb) return;
+            
+            let deltaY = e.clientY - dragStartY;
+            let newThumbY = dragStartThumbY + deltaY;
+            newThumbY = Math.max(0, Math.min(thumbTravel, newThumbY));
+            
+            $scrollbarThumb.style.transform = `translate(-50%, ${newThumbY}px)`;
+            
+            if (thumbTravel > 0) {
+                let scrollRatio = newThumbY / thumbTravel;
+                window.scrollTo({
+                    top: scrollRatio * maxScroll,
+                    behavior: 'auto'
+                });
+            }
+        });
+
+        const endDrag = function(e) {
+            if (isDraggingThumb) {
+                isDraggingThumb = false;
+                $scrollbarThumb.releasePointerCapture(e.pointerId);
+                wakeUpScrollbar();
+            }
+        };
+
+        $scrollbar.addEventListener('pointerup', endDrag);
+        $scrollbar.addEventListener('pointercancel', endDrag);
+    }
+
+    window.addEventListener('scroll', function() {
+        if (!isDraggingThumb) {
+            window.requestAnimationFrame(updateReaderScrollbarPosition);
+        }
+    }, { passive: true });
+
+    window.addEventListener('resize', function() {
+        window.requestAnimationFrame(updateReaderScrollbarMetrics);
+    });
+
+    if (window.ResizeObserver && $content) {
+        const ro = new ResizeObserver(() => {
+            window.requestAnimationFrame(updateReaderScrollbarMetrics);
+        });
+        ro.observe($content);
+    }
+
+    const htmlObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.attributeName === 'class' || mutation.attributeName === 'style') {
+                updateReaderScrollbarMetrics();
+            }
+        });
+    });
+    htmlObserver.observe(document.documentElement, { attributes: true });
+    htmlObserver.observe(document.body, { attributes: true });
+    
+    const fModal = document.getElementById('footnote-modal');
+    if (fModal) {
+        htmlObserver.observe(fModal, { attributes: true });
+    }
 
     loadChapter();
 
