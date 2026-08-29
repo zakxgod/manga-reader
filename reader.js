@@ -1657,6 +1657,10 @@
     let footnoteText = null;
     let footnoteClose = null;
 
+    let footnoteSavedScrollY = 0;
+    let footnoteScrollLocked = false;
+    let footnoteSavedBodyStyles = null;
+
     let pendingBookmark = null;
     let longPressTimer = null;
 
@@ -1736,6 +1740,81 @@
         }
     }
 
+    function lockFootnoteScroll() {
+        if (footnoteScrollLocked) return;
+
+        footnoteSavedScrollY =
+            window.scrollY
+            || window.pageYOffset
+            || 0;
+
+        footnoteSavedBodyStyles = {
+            position: document.body.style.position,
+            top: document.body.style.top,
+            left: document.body.style.left,
+            right: document.body.style.right,
+            width: document.body.style.width,
+            overflow: document.body.style.overflow
+        };
+
+        document.body.style.position = 'fixed';
+        document.body.style.top =
+            '-' + footnoteSavedScrollY + 'px';
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.width = '100%';
+        document.body.style.overflow = 'hidden';
+
+        footnoteScrollLocked = true;
+    }
+
+    function unlockFootnoteScroll() {
+        if (!footnoteScrollLocked) return;
+
+        var previousScrollBehavior =
+            document.documentElement.style.scrollBehavior;
+
+        document.documentElement.style.scrollBehavior = 'auto';
+
+        var savedStyles =
+            footnoteSavedBodyStyles || {};
+
+        document.body.style.position =
+            savedStyles.position || '';
+        document.body.style.top =
+            savedStyles.top || '';
+        document.body.style.left =
+            savedStyles.left || '';
+        document.body.style.right =
+            savedStyles.right || '';
+        document.body.style.width =
+            savedStyles.width || '';
+        document.body.style.overflow =
+            savedStyles.overflow || '';
+
+        window.scrollTo(
+            0,
+            footnoteSavedScrollY
+        );
+
+        window.requestAnimationFrame(
+            function () {
+                window.scrollTo(
+                    0,
+                    footnoteSavedScrollY
+                );
+
+                document.documentElement
+                    .style
+                    .scrollBehavior =
+                    previousScrollBehavior;
+            }
+        );
+
+        footnoteSavedBodyStyles = null;
+        footnoteScrollLocked = false;
+    }
+
     function showFootnoteModal(title, text) {
         if (
             !footnoteModal
@@ -1747,6 +1826,8 @@
 
         footnoteTitle.textContent = title;
         footnoteText.textContent = text;
+       
+        lockFootnoteScroll();
 
         footnoteModal.classList.add('open');
 
@@ -1765,6 +1846,8 @@
             'aria-hidden',
             'true'
         );
+
+        unlockFootnoteScroll();
     }
 
     function processFootnotes() {
