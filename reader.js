@@ -172,7 +172,7 @@
     // ==================== Настройки чтения ====================
 
     const READER_SETTINGS_KEY =
-        'manga_reader_settings_v1';
+        'manga_reader_settings_v2';
 
     const READER_FONT_MAP = {
         system: '',
