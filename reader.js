@@ -1454,6 +1454,28 @@
         return el;
     }
 
+    // ==================== Утилиты для сети ====================
+    async function fetchWithTimeout(resource, options = {}) {
+        const { timeout = 15000 } = options;
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            const response = await fetch(resource, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            if (error.name === 'AbortError') {
+                throw new Error('Превышено время ожидания ответа сервера. Пожалуйста, проверьте соединение.');
+            }
+            throw error;
+        }
+    }
+
     // ==================== Загрузка Telegraph ====================
 
     async function loadTelegraph(url) {
@@ -1461,7 +1483,7 @@
         if (!path) throw new Error('Некорректная ссылка Telegraph');
 
         var apiUrl = TELEGRAPH_API + encodeURIComponent(path) + '?return_content=true';
-        var response = await fetch(apiUrl);
+        var response = await fetchWithTimeout(apiUrl);
 
         if (!response.ok) {
             throw new Error('Telegraph API вернул ошибку: ' + response.status);
@@ -1604,7 +1626,7 @@
     async function loadTeletype(url) {
         // Teletype не имеет публичного API, используем CORS-прокси
         var proxyUrl = CORS_PROXY + encodeURIComponent(url);
-        var response = await fetch(proxyUrl);
+        var response = await fetchWithTimeout(proxyUrl);
 
         if (!response.ok) {
             throw new Error('Не удалось загрузить страницу Teletype');
@@ -1678,7 +1700,9 @@
             throw new Error('Некорректный идентификатор главы');
         }
 
-        var response = await fetch('chapters/' + slug + '.json');
+        // Добавляем параметр для обхода агрессивного кэширования мобильным Telegram
+        var cacheBuster = '?t=' + Date.now();
+        var response = await fetchWithTimeout('chapters/' + slug + '.json' + cacheBuster);
         if (!response.ok) {
             if (response.status === 404) {
                 throw new Error('Глава ещё загружается. Пожалуйста, подождите пару минут и попробуйте снова.');
