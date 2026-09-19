@@ -1252,7 +1252,6 @@
         );
     }
 
-    initReaderSettings();
 
     // ==================== Получение параметров ====================
 
@@ -2573,7 +2572,8 @@
         htmlObserver.observe(fModal, { attributes: true });
     }
 
-    loadChapter();
+    initReaderSettings();
+loadChapter();
 
     // ==================== IMAGE LIGHTBOX ====================
     const $readerImageLightbox = document.getElementById('reader-image-lightbox');
