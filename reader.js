@@ -144,6 +144,11 @@
             '.reader-theme-button'
         );
 
+    const $readerScrollbarToggle =
+        document.getElementById(
+            'reader-scrollbar-toggle'
+        );
+
     // ==================== Telegram WebApp ====================
 
     let tg = null;
@@ -449,6 +454,35 @@
     }
 
 
+    let scrollbarDisabledByUser = false;
+
+    function applyReaderScrollbar(enabled) {
+        scrollbarDisabledByUser = (enabled === false);
+
+        var $sb = document.getElementById(
+            'reader-scrollbar'
+        );
+
+        if ($sb) {
+            if (scrollbarDisabledByUser) {
+                $sb.hidden = true;
+            } else {
+                /*
+                    Не показываем сразу — пусть
+                    updateReaderScrollbarMetrics()
+                    решит, нужен ли он.
+                */
+                if (
+                    typeof updateReaderScrollbarMetrics
+                        === 'function'
+                ) {
+                    updateReaderScrollbarMetrics();
+                }
+            }
+        }
+    }
+
+
     function applyReaderTheme(themeName) {
         var palette =
             READER_THEMES[themeName];
@@ -550,6 +584,11 @@
                 readerSettings.indent === true;
         }
 
+        if ($readerScrollbarToggle) {
+            $readerScrollbarToggle.checked =
+                readerSettings.scrollbar !== false;
+        }
+
         updateThemeButtons(
             getCurrentThemeForControls()
         );
@@ -607,6 +646,17 @@
         ) {
             applyReaderIndent(
                 readerSettings.indent
+            );
+        }
+
+        if (
+            Object.prototype.hasOwnProperty.call(
+                readerSettings,
+                'scrollbar'
+            )
+        ) {
+            applyReaderScrollbar(
+                readerSettings.scrollbar
             );
         }
 
@@ -1135,6 +1185,26 @@
         }
 
 
+        if ($readerScrollbarToggle) {
+            $readerScrollbarToggle.addEventListener(
+                'change',
+                function () {
+                    var value =
+                        $readerScrollbarToggle.checked;
+
+                    setReaderSetting(
+                        'scrollbar',
+                        value
+                    );
+
+                    applyReaderScrollbar(
+                        value
+                    );
+                }
+            );
+        }
+
+
         $readerThemeButtons.forEach(
             function (button) {
                 button.addEventListener(
@@ -1611,7 +1681,7 @@
         var response = await fetch('chapters/' + slug + '.json');
         if (!response.ok) {
             if (response.status === 404) {
-                throw new Error('Глава не найдена. Возможно, GitHub Pages ещё обновляется (1-2 минуты).');
+                throw new Error('Глава ещё загружается. Пожалуйста, подождите пару минут и попробуйте снова.');
             }
             throw new Error('Ошибка загрузки: HTTP ' + response.status);
         }
@@ -2322,6 +2392,12 @@
         if (!$scrollbar || !$scrollbarTrack || !$scrollbarThumb) return;
         
         if (maxScroll <= 50) {
+            $scrollbar.hidden = true;
+            scrollbarVisible = false;
+            return;
+        }
+
+        if (scrollbarDisabledByUser) {
             $scrollbar.hidden = true;
             scrollbarVisible = false;
             return;
